@@ -1,0 +1,26 @@
+{
+  "groups": {
+    "audit": [
+      {
+        "name": "员工1",
+        "shift": "A",
+        "weekSchedule": {
+          "week1": ["工作", "工作", "工作", "工作", "工作", "休息", "工作"],
+          "week2": ["工作", "工作", "工作", "休息", "工作", "工作", "工作"]
+        },
+        "vacationDays": ["周五", "周六"]
+      }
+    ],
+    "design": [
+      {
+        "name": "员工2",
+        "shift": "B",
+        "weekSchedule": {  },
+        "vacationDays": ["周日", "周一"]
+      }
+    ],
+    "development": [
+      {  }
+    ]
+  }
+}

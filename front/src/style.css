@@ -1,0 +1,106 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f5f7fa;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+.page-container {
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.table-actions {
+  margin-bottom: 16px;
+}
+
+.violation-cell {
+  color: #f56c6c;
+  font-weight: 500;
+}
+
+.rest-day-cell {
+  background-color: #f0f9ff;
+}
+
+.work-day-cell {
+  background-color: #ffffff;
+}
+
+.forbidden-day-cell {
+  background-color: #fef0f0;
+}
+
+.shift-a {
+  color: #409eff;
+  font-weight: 500;
+}
+
+.shift-b {
+  color: #67c23a;
+  font-weight: 500;
+}
+
+/* 新增：优化表格单元格样式 */
+.el-table .cell {
+  padding: 8px 0 !important;
+  text-align: center;
+}
+
+/* 优化卡片样式 */
+.el-card {
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border: none;
+  margin-bottom: 20px;
+}
+
+/* 优化按钮样式 */
+.el-button {
+  border-radius: 6px;
+}
+
+/* 优化输入框样式 */
+.el-input, .el-select, .el-date-editor {
+  border-radius: 6px;
+}
+
+/* 优化对话框样式 */
+.el-dialog {
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* 优化标签样式 */
+.el-tag {
+  border-radius: 4px;
+}
+
+/* 优化表格头部样式 */
+.el-table th {
+  background-color: #fafafa;
+  font-weight: 600;
+  color: #303133;
+  border-color: #dcdfe6;
+}
