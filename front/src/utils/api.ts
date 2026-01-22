@@ -58,6 +58,7 @@ export interface CalendarOverride {
   scope?: string;
   target?: string;
   reason?: string;
+  priority?: number;
 }
 
 export interface SpecialDateRule {
@@ -153,6 +154,54 @@ function serializeShift(def: Omit<ShiftDefinition, 'id'> | ShiftDefinition) {
     remark: def.remark,
     big_week: (def as any).big_week ?? def.bigWeek,
     small_week: (def as any).small_week ?? def.smallWeek,
+  };
+}
+
+function normalizeAbsence(def: any): Absence {
+  return {
+    id: def.id,
+    person: def.person,
+    startDate: def.start_date ?? def.startDate,
+    endDate: def.end_date ?? def.endDate,
+    reason: def.reason,
+    countAsRest: def.count_as_rest ?? def.countAsRest,
+    type: def.type,
+  };
+}
+
+function serializeAbsence(def: Omit<Absence, 'id'> | Absence) {
+  return {
+    person: def.person,
+    start_date: def.startDate,
+    end_date: def.endDate,
+    reason: def.reason,
+    count_as_rest: def.countAsRest,
+    type: def.type,
+  };
+}
+
+function normalizeCalendarOverride(def: any): CalendarOverride {
+  return {
+    id: def.id,
+    date: def.date,
+    endDate: def.end_date ?? def.endDate,
+    overrideType: def.override_type ?? def.overrideType,
+    scope: def.scope,
+    target: def.target,
+    reason: def.reason,
+    priority: def.priority ?? 0,
+  };
+}
+
+function serializeCalendarOverride(def: Omit<CalendarOverride, 'id'> | CalendarOverride) {
+  return {
+    date: def.date,
+    end_date: def.endDate,
+    override_type: def.overrideType,
+    scope: def.scope,
+    target: def.target,
+    reason: def.reason,
+    priority: def.priority ?? 0,
   };
 }
 
@@ -281,7 +330,8 @@ export const api = {
   // Absence management
   getAbsences: async (): Promise<Absence[]> => {
     const response = await fetch(`${API_BASE_URL}/absences/`);
-    return handleResponse(response);
+    const result = await handleResponse<any[]>(response);
+    return (result || []).map(normalizeAbsence);
   },
 
   createAbsence: async (absence: Omit<Absence, 'id'>): Promise<Absence | null> => {
@@ -290,9 +340,10 @@ export const api = {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(absence),
+      body: JSON.stringify(serializeAbsence(absence)),
     });
-    return handleResponse(response);
+    const result = await handleResponse<any>(response);
+    return result ? normalizeAbsence(result) : null;
   },
 
   updateAbsence: async (id: number, absence: Absence): Promise<Absence | null> => {
@@ -301,9 +352,10 @@ export const api = {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(absence),
+      body: JSON.stringify(serializeAbsence(absence)),
     });
-    return handleResponse(response);
+    const result = await handleResponse<any>(response);
+    return result ? normalizeAbsence(result) : null;
   },
 
   deleteAbsence: async (id: number): Promise<void> => {
@@ -351,7 +403,8 @@ export const api = {
   // Calendar overrides
   getCalendarOverrides: async (): Promise<CalendarOverride[]> => {
     const response = await fetch(`${API_BASE_URL}/calendar-overrides/`);
-    return handleResponse(response);
+    const result = await handleResponse<any[]>(response);
+    return (result || []).map(normalizeCalendarOverride);
   },
 
   createCalendarOverride: async (override: Omit<CalendarOverride, 'id'>): Promise<CalendarOverride | null> => {
@@ -360,9 +413,10 @@ export const api = {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(override),
+      body: JSON.stringify(serializeCalendarOverride(override)),
     });
-    return handleResponse(response);
+    const result = await handleResponse<any>(response);
+    return result ? normalizeCalendarOverride(result) : null;
   },
 
   updateCalendarOverride: async (id: number, override: CalendarOverride): Promise<CalendarOverride | null> => {
@@ -371,9 +425,10 @@ export const api = {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(override),
+      body: JSON.stringify(serializeCalendarOverride(override)),
     });
-    return handleResponse(response);
+    const result = await handleResponse<any>(response);
+    return result ? normalizeCalendarOverride(result) : null;
   },
 
   deleteCalendarOverride: async (id: number): Promise<void> => {

@@ -1,11 +1,11 @@
-<template>
+﻿<template>
   <div class="schedule-page">
     <el-card class="schedule-card">
       <template #header>
         <div class="card-header">
           <div class="header-left">
             <h3 class="card-title">排班生成</h3>
-            <p class="card-subtitle">自动为选定月份生成最优排班计划</p>
+            <p class="card-subtitle">显示所选月份的排班</p>
           </div>
           <div class="header-right">
             <el-date-picker
@@ -26,7 +26,7 @@
               :disabled="!hasResults || loading"
               size="default"
             >
-              导出Excel
+              导出 Excel
             </el-button>
           </div>
         </div>
@@ -84,7 +84,7 @@
 
         <el-alert
           v-if="violationCount > 0"
-          :title="`发现 ${violationCount} 条违规，请查看违规明细`"
+          :title="`发现 ${violationCount} 条规则违规，请查看详情`"
           type="warning"
           :closable="false"
           show-icon
@@ -99,33 +99,41 @@
             :max-height="600"
             :header-cell-style="{background: '#f5f7fa', fontWeight: 'bold'}"
             :row-style="{height: '50px'}"
+            :span-method="spanMethod"
+            table-layout="fixed"
+            :fit="true"
             sticky
           >
-            <el-table-column prop="personName" label="姓名" width="120" fixed="left" 
+            <el-table-column prop="group" label="组名" width="80" fixed="left"
                              header-align="center" align="center" />
-            <el-table-column prop="group" label="组别" width="100" fixed="left" 
+            <el-table-column prop="personName" label="姓名" width="80" fixed="left" 
                              header-align="center" align="center" />
             <el-table-column
               v-for="day in monthDays"
               :key="day.date"
               :label="day.labelShort"
-              :width="day.date === todayDate ? '100' : '80'"
+              :class-name="day.date === todayDate ? 'today-column' : ''"
+              :min-width="day.date === todayDate ? 44 : 40"
               align="center"
             >
+              <template #header>
+                <div class="day-header">
+                  <div class="day-date">{{ day.labelDate }}</div>
+                  <div class="day-week">{{ day.labelWeek }}</div>
+                </div>
+              </template>
               <template #default="{ row }">
                 <div
                   :class="[
                     'schedule-cell',
-                    row[day.date]?.status === '休息' ? 'rest-day-cell' : 'work-day-cell',
-                    row[day.date]?.isViolation ? 'violation-cell' : '',
-                    day.date === todayDate ? 'today-cell' : ''
+                    row[day.date]?.status === '休息' ? 'rest-day-cell' : 'shift-day-cell',
+                    row[day.date]?.isViolation ? 'violation-cell' : ''
                   ]"
+                  :style="getCellStyle(row[day.date])"
                 >
                   <div v-if="row[day.date]">
                     <div v-if="row[day.date].status === '上班'" class="shift-info">
-                      <span :class="['shift-badge', row[day.date].shift === 'A' ? 'shift-a' : 'shift-b']">
-                        {{ row[day.date].shift }}班
-                      </span>
+                      <span class="shift-text">{{ row[day.date].shift }}</span>
                     </div>
                     <div v-else class="status-info">
                       {{ row[day.date].status }}
@@ -154,7 +162,7 @@ const selectedMonth = ref(dayjs().format('YYYY-MM'))
 const todayDate = dayjs().format('YYYY-MM-DD')
 const loading = ref(false)
 
-// 存储后端返回的原始排班数据
+// 后端返回的原始排班数据
 const scheduleData = ref<ScheduleItem[]>([])
 const violations = ref<any[]>([])
 
@@ -164,19 +172,22 @@ const violationCount = computed(() => violations.value.length)
 const monthDays = computed(() => {
   const start = dayjs(selectedMonth.value + '-01')
   const end = start.endOf('month')
-  const days: { date: string; label: string; labelShort: string }[] = []
+  const days: { date: string; label: string; labelShort: string; labelDate: string; labelWeek: string }[] = []
   let current = start
+  const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+
   while (current.isBefore(end) || current.isSame(end, 'day')) {
     const dateStr = current.format('YYYY-MM-DD')
     const month = current.month() + 1
     const day = current.date()
-    const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
     const weekDay = weekdays[current.day()] || '未知'
-    const shortDay = current.date()
+
     days.push({
       date: dateStr,
       label: `${month}月${day}日 ${weekDay}`,
-      labelShort: `${shortDay}\n${weekDay.substring(0,1)}`
+      labelShort: `${month}/${day}\n${weekDay}`,
+      labelDate: `${month}/${day}`,
+      labelWeek: weekDay
     })
     current = current.add(1, 'day')
   }
@@ -186,32 +197,39 @@ const monthDays = computed(() => {
 const scheduleTable = computed(() => {
   const table: Record<string, any>[] = []
   const personMap = new Map<string, any>()
+  const groupOrder: string[] = []
+  const groupPersons = new Map<string, Set<string>>()
 
-  // 获取所有参与排班的人员（从数据中提取）
-  const personSet = new Set<string>()
   scheduleData.value.forEach(item => {
-    personSet.add(item.person_name)
+    const groupName = item.group || '未分组'
+    if (!groupPersons.has(groupName)) {
+      groupPersons.set(groupName, new Set())
+      groupOrder.push(groupName)
+    }
+    groupPersons.get(groupName)!.add(item.person_name)
   })
 
-  // 初始化每个人的行
-  Array.from(personSet).sort().forEach(personName => {
-    const firstRecord = scheduleData.value.find(item => item.person_name === personName)
-    if (firstRecord) {
+  groupOrder.forEach(groupName => {
+    const names = Array.from(groupPersons.get(groupName) || [])
+    names.sort((a, b) => a.localeCompare(b, 'zh-Hans-CN'))
+    names.forEach(personName => {
       const row: Record<string, any> = {
-        personName: personName,
-        group: firstRecord.group
+        group: groupName,
+        personName
       }
       monthDays.value.forEach(day => {
         row[day.date] = null
       })
-      personMap.set(personName, row)
+      const rowKey = `${groupName}__${personName}`
+      personMap.set(rowKey, row)
       table.push(row)
-    }
+    })
   })
 
   // 填充排班数据
   scheduleData.value.forEach(item => {
-    const row = personMap.get(item.person_name)
+    const groupName = item.group || '未分组'
+    const row = personMap.get(`${groupName}__${item.person_name}`)
     if (row) {
       row[item.date] = {
         status: item.status,
@@ -225,6 +243,75 @@ const scheduleTable = computed(() => {
   return table
 })
 
+const getPastelColor = (index: number) => {
+  const hue = (index * 137.508) % 360
+  return `hsl(${hue}, 70%, 92%)`
+}
+
+const shiftColorMap = computed(() => {
+  const names = Array.from(
+    new Set(
+      scheduleData.value
+        .map(item => item.shift)
+        .filter((shift): shift is string => Boolean(shift))
+    )
+  )
+  names.sort((a, b) => a.localeCompare(b, 'zh-Hans-CN'))
+
+  const map = new Map<string, string>()
+  names.forEach((name, index) => {
+    map.set(name, getPastelColor(index))
+  })
+  return map
+})
+
+const getCellStyle = (cell?: { status: string; shift?: string }) => {
+  if (!cell || cell.status !== '上班' || !cell.shift) {
+    return {}
+  }
+  const color = shiftColorMap.value.get(cell.shift)
+  if (!color) {
+    return {}
+  }
+  return {
+    backgroundColor: color,
+    color: '#1f2d3d'
+  }
+}
+
+const groupRowSpans = computed(() => {
+  const spans: number[] = []
+  let index = 0
+  const rows = scheduleTable.value
+
+  while (index < rows.length) {
+    const groupName = rows[index].group
+    let count = 1
+    while (index + count < rows.length && rows[index + count].group === groupName) {
+      count += 1
+    }
+    spans[index] = count
+    for (let i = 1; i < count; i += 1) {
+      spans[index + i] = 0
+    }
+    index += count
+  }
+
+  return spans
+})
+
+const spanMethod = ({ rowIndex, columnIndex }: { rowIndex: number; columnIndex: number }) => {
+  if (columnIndex !== 0) {
+    return { rowspan: 1, colspan: 1 }
+  }
+
+  const span = groupRowSpans.value[rowIndex] ?? 1
+  if (span === 0) {
+    return { rowspan: 0, colspan: 0 }
+  }
+  return { rowspan: span, colspan: 1 }
+}
+
 const handleGenerate = async () => {
   if (!selectedMonth.value) {
     ElMessage.warning('请选择月份')
@@ -237,7 +324,6 @@ const handleGenerate = async () => {
     if (result) {
       scheduleData.value = result.schedule
       violations.value = result.violations
-      
       if (result.violations.length > 0) {
         ElMessage.warning(`排班已生成，但发现 ${result.violations.length} 条违规`)
       } else {
@@ -258,43 +344,41 @@ const handleExport = () => {
     return
   }
 
-  // 准备导出数据
   const exportData: any[] = []
+  const weekdayTexts = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
   scheduleData.value.forEach(item => {
     const dateObj = dayjs(item.date)
     const month = dateObj.month() + 1
     const day = dateObj.date()
-    const weekDay = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][dateObj.day()]
+    const weekDay = weekdayTexts[dateObj.day()]
     exportData.push({
-      日期: `${month}月${day}日`,
-      星期: weekDay,
-      姓名: item.person_name,
-      组别: item.group,
-      班次: item.shift || '',
-      状态: item.status,
-      是否违规: item.is_violation ? '是' : '否',
-      违规原因: item.violationReason || ''
+      date: `${month}月${day}日`,
+      weekday: weekDay,
+      name: item.person_name,
+      group: item.group,
+      shift: item.shift || '',
+      status: item.status,
+      violation: item.is_violation ? '是' : '否',
+      violationReason: item.violationReason || ''
     })
   })
 
-  // 创建工作簿
   const ws = XLSX.utils.json_to_sheet(exportData)
   const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, '排班表')
+  XLSX.utils.book_append_sheet(wb, ws, 'schedule')
 
-  // 导出文件
   const monthObj = dayjs(selectedMonth.value + '-01')
-  const fileName = `排班表_${monthObj.year()}年${monthObj.month() + 1}月.xlsx`
+  const fileName = `schedule_${monthObj.year()}-${monthObj.month() + 1}.xlsx`
   XLSX.writeFile(wb, fileName)
   ElMessage.success('导出成功')
 }
 
-// 监听月份变化，自动排班
+// 监听月份变化，自动拉取排班
 watch(selectedMonth, (newVal) => {
-  if(newVal) {
+  if (newVal) {
     handleGenerate()
   }
-}, { immediate: true }) // 立即执行一次，页面加载时自动生成当前月份的排班
+}, { immediate: true })
 </script>
 
 <style scoped>
@@ -420,18 +504,60 @@ watch(selectedMonth, (newVal) => {
   border: 1px solid #ebeef5;
 }
 
+:deep(.el-table .cell) {
+  padding: 0 !important;
+  line-height: 1.2;
+}
+
+:deep(.el-table th .cell) {
+  font-size: 11px;
+  padding: 6px 0;
+  line-height: 1.2;
+}
+
+:deep(.el-table th) {
+  height: 54px;
+}
+
+.day-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+}
+
+.day-date {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.day-week {
+  font-size: 11px;
+  color: #606266;
+}
+
 .schedule-cell {
-  min-height: 60px;
-  padding: 4px;
+  width: 100%;
+  height: 100%;
+  min-height: 46px;
+  padding: 0;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 0;
+  transition: background-color 0.2s ease;
 }
 
 .today-cell {
   background-color: #fff9e6 !important;
   border: 1px solid #ffd700 !important;
+}
+
+:deep(.today-column .cell) {
+  background-color: #fff9e6;
+  font-weight: 600;
+  color: #a06200;
 }
 
 .shift-info {
@@ -440,17 +566,15 @@ watch(selectedMonth, (newVal) => {
   align-items: center;
 }
 
-.shift-badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 500;
+.shift-text {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
 }
 
 .status-info {
   color: #909399;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .violation-mark {
@@ -466,10 +590,10 @@ watch(selectedMonth, (newVal) => {
 }
 
 .rest-day-cell {
-  background-color: #f0f9ff;
+  background-color: #f3f6fb;
 }
 
-.work-day-cell {
+.shift-day-cell {
   background-color: #ffffff;
 }
 
@@ -490,7 +614,7 @@ watch(selectedMonth, (newVal) => {
   }
   
   .table-container {
-    overflow-x: auto;
+    overflow-x: hidden;
   }
 }
 </style>

@@ -1,4 +1,4 @@
- <template>
+﻿<template>
   <div class="page-container">
     <el-card class="main-card">
       <template #header>
@@ -21,17 +21,14 @@
         :header-cell-style="{background: '#f5f7fa', fontWeight: 'bold'}"
         v-loading="loading"
       >
-        <el-table-column prop="name" label="姓名" width="120" />
-        <el-table-column prop="group" label="所属组" width="120" />
-        <el-table-column prop="shiftType" label="班次类型" width="150">
+        <el-table-column prop="name" label="姓名" />
+        <el-table-column prop="group" label="所属组" />
+        <el-table-column prop="shiftType" label="班次类型">
           <template #default="{ row }">
-            <el-tag v-if="getShiftTypeName(row.shiftType)" :type="getShiftTypeTagType(getShiftTypeName(row.shiftType))" disable-transitions>
-              {{ getShiftTypeName(row.shiftType) }}
-            </el-tag>
-            <span v-else>未指定</span>
+            <span>{{ getShiftTypeName(row.shiftType) || '未知' }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="操作">
           <template #default="{ row, $index }">
             <el-button link type="primary" @click="handleEdit(row, $index)">编辑</el-button>
             <el-button link type="danger" @click="handleDelete($index)">删除</el-button>
@@ -41,12 +38,12 @@
     </el-card>
 
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px" :destroy-on-close="true">
-      <el-form :model="form" label-width="120px" style="padding-right: 20px;">
+      <el-form :model="form" label-width="120px" class="person-form">
         <el-form-item label="姓名" required>
           <el-input v-model="form.name" placeholder="请输入姓名" />
         </el-form-item>
         <el-form-item label="所属组" required>
-          <el-select v-model="form.group" placeholder="请选择所属组" filterable style="width: 100%;">
+          <el-select v-model="form.group" placeholder="请选择所属组" filterable>
             <el-option
               v-for="group in availableGroups"
               :key="group.id"
@@ -56,7 +53,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="班次类型">
-          <el-select v-model="form.shiftType" placeholder="请选择班次类型" filterable style="width: 100%;">
+          <el-select v-model="form.shiftType" placeholder="请选择班次类型" filterable>
             <el-option
               v-for="shift in availableShifts"
               :key="shift.id"
@@ -97,13 +94,8 @@ const form = ref<{ name: string; group: string; shiftType: number | null }>({
   shiftType: null
 })
 
-const availableGroups = computed(() => {
-  return groups.value
-})
-
-const availableShifts = computed(() => {
-  return shifts.value.filter(shift => shift.enabled)
-})
+const availableGroups = computed(() => groups.value)
+const availableShifts = computed(() => shifts.value.filter(shift => shift.enabled))
 
 const dialogTitle = computed(() => editingIndex.value !== null ? '编辑人员' : '新增人员')
 
@@ -119,7 +111,6 @@ const loadPersons = async () => {
     loading.value = true
     const data = await api.getPersons()
     if (data) {
-      // 将API返回的Person数据直接使用
       persons.value = data
     }
   } catch (error) {
@@ -154,43 +145,19 @@ const loadShifts = async () => {
   }
 }
 
-const getShiftTypeTagType = (shiftType: any) => {
-  // 如果传入的是对象，需要获取其name属性
-  const shiftTypeName = typeof shiftType === 'object' && shiftType !== null ? shiftType.name : shiftType;
-  
-  switch (shiftTypeName) {
-    case 'A':
-      return 'primary'
-    case 'B':
-      return 'success'
-    default:
-      return 'info'
-  }
-}
-
-// 辅助函数：获取班次类型名称
 const getShiftTypeName = (shiftType: any) => {
-  if (!shiftType) {
-    return null;
-  }
-  
-  // 如果shiftType是数字ID，查找对应的班次对象
+  if (!shiftType) return null
   if (typeof shiftType === 'number') {
-    const shiftObj = shifts.value.find(shift => shift.id === shiftType);
-    return shiftObj ? shiftObj.name : null;
+    const shiftObj = shifts.value.find(shift => shift.id === shiftType)
+    return shiftObj ? shiftObj.name : null
   }
-  
-  // 如果shiftType是对象，直接返回其name属性
   if (typeof shiftType === 'object' && shiftType !== null) {
-    return shiftType.name || shiftType.name;
+    return shiftType.name || shiftType.name
   }
-  
-  // 如果shiftType是字符串，直接返回
   if (typeof shiftType === 'string') {
-    return shiftType;
+    return shiftType
   }
-  
-  return null;
+  return null
 }
 
 const handleAdd = () => {
@@ -205,19 +172,15 @@ const handleAdd = () => {
 
 const handleEdit = (row: Person, index: number) => {
   editingIndex.value = index
-  // 根据row.shiftType的数据类型进行相应处理
   let shiftTypeId = null
   if (typeof row.shiftType === 'number') {
-    // 如果shiftType是数字ID
     shiftTypeId = row.shiftType
   } else if (row.shiftType && typeof row.shiftType === 'object') {
-    // 如果shiftType是对象，获取其ID
     shiftTypeId = row.shiftType.id
   } else if (row.shiftType === null || row.shiftType === undefined) {
-    // 如果shiftType为空
     shiftTypeId = null
   }
-  
+
   form.value = { 
     name: row.name,
     group: row.group,
@@ -229,18 +192,17 @@ const handleEdit = (row: Person, index: number) => {
 const handleDelete = async (index: number) => {
   try {
     const person = persons.value[index]
-    
     if (!person) {
       ElMessage.error('无法找到要删除的人员')
       return
     }
-    
+
     await ElMessageBox.confirm(`确定要删除人员"${person.name}"吗？`, '提示', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning'
     })
-    
+
     if (person.id) {
       loading.value = true
       await api.deletePerson(person.id)
@@ -269,46 +231,40 @@ const handleSubmit = async () => {
 
   try {
     loading.value = true
-    
+
     if (editingIndex.value !== null) {
-      // 编辑现有人员
       const person = persons.value[editingIndex.value]
       if (!person || !person.id) {
         ElMessage.error('无效的人员ID')
         return
       }
-      
-      // 构造符合API要求的PersonUpdate对象，需要将shiftType的ID转换为ShiftDefinition对象
+
       const updateData = {
         id: person.id,
         name: form.value.name!,
         group: form.value.group!,
         shiftType: form.value.shiftType ? shifts.value.find(shift => shift.id === Number(form.value.shiftType)) : undefined
       }
-      
+
       const updatedPerson = await api.updatePerson(Number(person.id), updateData)
-      
       if (updatedPerson) {
-        // 更新UI中的数据
         persons.value[editingIndex.value] = updatedPerson
       }
       ElMessage.success('人员信息已更新')
     } else {
-      // 创建新人员
       const createData: Omit<Person, 'id'> = {
         name: form.value.name!,
         group: form.value.group!,
         shiftType: form.value.shiftType ? shifts.value.find(shift => shift.id === Number(form.value.shiftType)) : undefined
       }
-      
+
       const newPerson = await api.createPerson(createData)
-      
       if (newPerson) {
         persons.value.push(newPerson)
       }
       ElMessage.success('人员已创建')
     }
-    
+
     dialogVisible.value = false
   } catch (error) {
     console.error('保存人员信息失败:', error)
@@ -355,5 +311,16 @@ const handleSubmit = async () => {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+}
+
+.person-form {
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 0 20px 10px;
+}
+
+.person-form .el-input,
+.person-form .el-select {
+  width: 100%;
 }
 </style>

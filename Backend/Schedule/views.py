@@ -1,4 +1,4 @@
-from django.shortcuts import render
+﻿from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.dateparse import parse_date
@@ -7,8 +7,16 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework import status
-from .models import ShiftDefinition, GroupConfig, Person, Absence, PersonOverride, CalendarOverride, SpecialDateRule, WeekRotationConfig
-from .serializers import ShiftDefinitionSerializer, GroupConfigSerializer, PersonSerializer, AbsenceSerializer, PersonOverrideSerializer, CalendarOverrideSerializer, SpecialDateRuleSerializer, WeekRotationConfigSerializer
+from .models import ShiftDefinition, GroupConfig, Person, Absence, CalendarOverride, SpecialDateRule, WeekRotationConfig
+from .serializers import (
+    ShiftDefinitionSerializer,
+    GroupConfigSerializer,
+    PersonSerializer,
+    AbsenceSerializer,
+    CalendarOverrideSerializer,
+    SpecialDateRuleSerializer,
+    WeekRotationConfigSerializer,
+)
 from .schedule_generator import generate_schedule
 import json
 from datetime import datetime
@@ -18,45 +26,34 @@ from datetime import datetime
 @permission_classes([AllowAny])
 def week_schedule_config(request):
     """
-    获取或更新大小周配置（现在存储在ShiftDefinition中）
+    获取或更新大小周配置（存储在 ShiftDefinition 中）
     """
     if request.method == 'GET':
-        # 获取所有班次及其大小周配置
         shifts = ShiftDefinition.objects.all()
         configs = []
         for shift in shifts:
-            # 为每个班次创建配置对象
-            config = {
+            configs.append({
                 'id': shift.id,
                 'shiftType': shift.id,
                 'name': shift.name,
                 'big_week': shift.big_week,
                 'small_week': shift.small_week
-            }
-            configs.append(config)
-        
+            })
         return Response(configs)
-    
-    elif request.method == 'POST':
-        # 更新班次的大小周配置
+
+    if request.method == 'POST':
         data = request.data
-        
         for config_data in data:
             shift_type_id = config_data.get('shift_type') or config_data.get('shiftType')
-            
             if shift_type_id:
                 try:
-                    # 获取对应的班次
                     shift_definition = ShiftDefinition.objects.get(id=shift_type_id)
-                    
-                    # 更新班次的大小周配置
                     shift_definition.big_week = config_data.get('big_week', config_data.get('bigWeek', []))
                     shift_definition.small_week = config_data.get('small_week', config_data.get('smallWeek', []))
                     shift_definition.save()
-                    
                 except ShiftDefinition.DoesNotExist:
                     return Response({'error': f'班次ID {shift_type_id} 不存在'}, status=400)
-        
+
         return Response({'message': '大小周配置已更新'}, status=201)
 
 
@@ -67,26 +64,19 @@ def week_rotation_config(request):
     获取或更新月份大小周配置
     """
     if request.method == 'GET':
-        # 获取所有的月份大小周配置
         configs = WeekRotationConfig.objects.all()
         serializer = WeekRotationConfigSerializer(configs, many=True)
         return Response(serializer.data)
-    
-    elif request.method == 'POST':
-        # 更新或创建月份大小周配置
+
+    if request.method == 'POST':
         data = request.data
-        
-        # 删除现有的配置
         WeekRotationConfig.objects.all().delete()
-        
-        # 创建新的配置
         for config_data in data:
             serializer = WeekRotationConfigSerializer(data=config_data)
             if serializer.is_valid():
                 serializer.save()
             else:
                 return Response(serializer.errors, status=400)
-        
         return Response({'message': '月份大小周配置已更新'}, status=201)
 
 
@@ -99,8 +89,8 @@ def shift_definitions_list(request):
         shift_definitions = ShiftDefinition.objects.all()
         serializer = ShiftDefinitionSerializer(shift_definitions, many=True)
         return Response(serializer.data)
-    
-    elif request.method == 'POST':
+
+    if request.method == 'POST':
         serializer = ShiftDefinitionSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -122,14 +112,14 @@ def shift_definition_detail(request, pk):
         serializer = ShiftDefinitionSerializer(shift_definition)
         return Response(serializer.data)
 
-    elif request.method == 'PUT':
+    if request.method == 'PUT':
         serializer = ShiftDefinitionSerializer(shift_definition, data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    elif request.method == 'DELETE':
+    if request.method == 'DELETE':
         shift_definition.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -143,8 +133,8 @@ def group_configs_list(request):
         group_configs = GroupConfig.objects.all()
         serializer = GroupConfigSerializer(group_configs, many=True)
         return Response(serializer.data)
-    
-    elif request.method == 'POST':
+
+    if request.method == 'POST':
         serializer = GroupConfigSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -166,14 +156,14 @@ def group_config_detail(request, pk):
         serializer = GroupConfigSerializer(group_config)
         return Response(serializer.data)
 
-    elif request.method == 'PUT':
+    if request.method == 'PUT':
         serializer = GroupConfigSerializer(group_config, data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    elif request.method == 'DELETE':
+    if request.method == 'DELETE':
         group_config.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -187,8 +177,8 @@ def persons_list(request):
         persons = Person.objects.select_related('shift_type').all()
         serializer = PersonSerializer(persons, many=True)
         return Response(serializer.data)
-    
-    elif request.method == 'POST':
+
+    if request.method == 'POST':
         serializer = PersonSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -210,14 +200,14 @@ def person_detail(request, pk):
         serializer = PersonSerializer(person)
         return Response(serializer.data)
 
-    elif request.method == 'PUT':
+    if request.method == 'PUT':
         serializer = PersonSerializer(person, data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    elif request.method == 'DELETE':
+    if request.method == 'DELETE':
         person.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -231,8 +221,8 @@ def absences_list(request):
         absences = Absence.objects.all()
         serializer = AbsenceSerializer(absences, many=True)
         return Response(serializer.data)
-    
-    elif request.method == 'POST':
+
+    if request.method == 'POST':
         serializer = AbsenceSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -254,59 +244,15 @@ def absence_detail(request, pk):
         serializer = AbsenceSerializer(absence)
         return Response(serializer.data)
 
-    elif request.method == 'PUT':
+    if request.method == 'PUT':
         serializer = AbsenceSerializer(absence, data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    elif request.method == 'DELETE':
+    if request.method == 'DELETE':
         absence.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-@api_view(['GET', 'POST'])
-def person_overrides_list(request):
-    """
-    获取或创建人员锁定规则
-    """
-    if request.method == 'GET':
-        person_overrides = PersonOverride.objects.all()
-        serializer = PersonOverrideSerializer(person_overrides, many=True)
-        return Response(serializer.data)
-    
-    elif request.method == 'POST':
-        serializer = PersonOverrideSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-@api_view(['GET', 'PUT', 'DELETE'])
-def person_override_detail(request, pk):
-    """
-    获取、更新或删除特定人员锁定规则
-    """
-    try:
-        person_override = PersonOverride.objects.get(pk=pk)
-    except PersonOverride.DoesNotExist:
-        return Response(status=status.HTTP_404_NOT_FOUND)
-
-    if request.method == 'GET':
-        serializer = PersonOverrideSerializer(person_override)
-        return Response(serializer.data)
-
-    elif request.method == 'PUT':
-        serializer = PersonOverrideSerializer(person_override, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    elif request.method == 'DELETE':
-        person_override.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -319,8 +265,8 @@ def calendar_overrides_list(request):
         calendar_overrides = CalendarOverride.objects.all()
         serializer = CalendarOverrideSerializer(calendar_overrides, many=True)
         return Response(serializer.data)
-    
-    elif request.method == 'POST':
+
+    if request.method == 'POST':
         serializer = CalendarOverrideSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -342,14 +288,14 @@ def calendar_override_detail(request, pk):
         serializer = CalendarOverrideSerializer(calendar_override)
         return Response(serializer.data)
 
-    elif request.method == 'PUT':
+    if request.method == 'PUT':
         serializer = CalendarOverrideSerializer(calendar_override, data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    elif request.method == 'DELETE':
+    if request.method == 'DELETE':
         calendar_override.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -363,8 +309,8 @@ def special_date_rules_list(request):
         special_date_rules = SpecialDateRule.objects.all()
         serializer = SpecialDateRuleSerializer(special_date_rules, many=True)
         return Response(serializer.data)
-    
-    elif request.method == 'POST':
+
+    if request.method == 'POST':
         serializer = SpecialDateRuleSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -386,14 +332,14 @@ def special_date_rule_detail(request, pk):
         serializer = SpecialDateRuleSerializer(special_date_rule)
         return Response(serializer.data)
 
-    elif request.method == 'PUT':
+    if request.method == 'PUT':
         serializer = SpecialDateRuleSerializer(special_date_rule, data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    elif request.method == 'DELETE':
+    if request.method == 'DELETE':
         special_date_rule.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -407,8 +353,8 @@ def week_rotation_configs_list(request):
         week_rotation_configs = WeekRotationConfig.objects.all()
         serializer = WeekRotationConfigSerializer(week_rotation_configs, many=True)
         return Response(serializer.data)
-    
-    elif request.method == 'POST':
+
+    if request.method == 'POST':
         serializer = WeekRotationConfigSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -430,59 +376,40 @@ def week_rotation_config_detail(request, pk):
         serializer = WeekRotationConfigSerializer(week_rotation_config)
         return Response(serializer.data)
 
-    elif request.method == 'PUT':
+    if request.method == 'PUT':
         serializer = WeekRotationConfigSerializer(week_rotation_config, data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    elif request.method == 'DELETE':
+    if request.method == 'DELETE':
         week_rotation_config.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
 
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def generate_schedule_view(request):
     """
-    生成排班表
-    
+    生成排班
+
     请求参数:
     {
         "year_month": "YYYY-MM"
-    }
-    
-    返回:
-    {
-        "schedule": [
-            {
-                "person_id": int,
-                "person_name": str,
-                "group": str,
-                "date": "YYYY-MM-DD",
-                "shift": str,
-                "status": str,
-                "is_violation": bool,
-                "violation_reason": str
-            },
-            ...
-        ],
-        "violations": []
     }
     """
     try:
         year_month = request.data.get('year_month')
         if not year_month:
             return Response(
-                {'error': '缺少year_month参数'},
+                {'error': '缺少 year_month 参数'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         result = generate_schedule(year_month)
         return Response(result, status=status.HTTP_200_OK)
-    
+
     except Exception as e:
         return Response(
             {'error': str(e)},

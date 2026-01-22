@@ -7,14 +7,11 @@
           排班管理系统
         </h1>
         <div class="header-actions">
-          <el-button @click="saveData" type="primary" :icon="Document" size="large">
-            保存数据
-          </el-button>
         </div>
       </div>
     </el-header>
     <el-container>
-      <el-aside width="220px" class="app-sidebar">
+      <el-aside width="280px" class="app-sidebar">
         <el-menu
           :default-active="activeMenu"
           @select="handleMenuSelect"
@@ -38,10 +35,6 @@
           <el-menu-item index="absences">
             <el-icon><DocumentRemove /></el-icon>
             <span>请假管理</span>
-          </el-menu-item>
-          <el-menu-item index="overrides">
-            <el-icon><Edit /></el-icon>
-            <span>人员锁定</span>
           </el-menu-item>
           <el-menu-item index="calendar">
             <el-icon><Calendar /></el-icon>
@@ -74,7 +67,6 @@ import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import {
   Calendar,
-  Document,
   Clock,
   OfficeBuilding,
   User,
@@ -86,31 +78,21 @@ import {
 } from '@element-plus/icons-vue'
 import { 
   loadFromApi, 
-  saveToApi, 
   loadFromLocalStorage, 
-  saveToLocalStorage,
-  syncPersons,
-  syncAbsences,
-  syncPersonOverrides,
-  syncCalendarOverrides,
-  syncSpecialDateRules,
-  syncWeekRotationConfigs,
-  syncShiftDefinitions,
-  syncGroupConfigs
 } from './stores/scheduleStore'
-import { ElMessage } from 'element-plus'
+
 
 const router = useRouter()
 const route = useRoute()
-const activeMenu = ref('rules')
+const activeMenu = ref('shifts')
 const dataLoaded = ref(false)
 
 onMounted(async () => {
   // 初始化路由
   if (route.path === '/') {
-    router.push('/rules')
+    router.push('/shifts')
   } else {
-    activeMenu.value = route.path.slice(1) || 'rules'
+    activeMenu.value = route.path.slice(1) || 'shifts'
   }
   
   // 从后端加载数据
@@ -130,27 +112,6 @@ const handleMenuSelect = (key: string) => {
   router.push(`/${key}`)
 }
 
-const saveData = async () => {
-  try {
-    // 保存所有类型的数据到后端
-    await saveToApi()
-    await syncShiftDefinitions()
-    await syncGroupConfigs()
-    await syncPersons()
-    await syncAbsences()
-    await syncPersonOverrides()
-    await syncCalendarOverrides()
-    await syncSpecialDateRules()
-    await syncWeekRotationConfigs()
-    
-    ElMessage.success('数据已保存到服务器')
-  } catch (error) {
-    console.error("保存到后端失败:", error)
-    // 如果保存到后端失败，至少保存到本地
-    saveToLocalStorage()
-    ElMessage.warning('服务器保存失败，已保存到本地')
-  }
-}
 </script>
 
 <style scoped>
@@ -192,7 +153,7 @@ const saveData = async () => {
   background-color: #f5f7fa;
   border-right: 1px solid #ebeef5;
   box-shadow: inset -2px 0 4px rgba(0, 0, 0, 0.03);
-  padding: 20px 0;
+  padding: 24px 0;
   height: calc(100vh - 60px);
   position: sticky;
   top: 0;
@@ -205,8 +166,9 @@ const saveData = async () => {
 
 .app-main {
   background-color: #f5f7fa;
-  padding: 20px;
+  padding: 24px;
   overflow-y: auto;
+  font-size: 16px;
 }
 
 .loading {
@@ -223,10 +185,15 @@ const saveData = async () => {
   margin: 0 12px;
   border-radius: 8px;
   transition: all 0.3s ease;
-  height: 44px;
+  height: 58px;
   display: flex;
   align-items: center;
   padding-left: 20px !important;
+  font-size: 16px;
+}
+
+.sidebar-menu .el-menu-item .el-icon {
+  font-size: 20px;
 }
 
 .sidebar-menu .el-menu-item:hover {

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="page-container">
     <el-card>
       <template #header>
@@ -8,9 +8,19 @@
         </div>
       </template>
       <el-table :data="overrides" border style="width: 100%" v-loading="loading">
-        <el-table-column prop="date" label="日期" width="120">
+        <el-table-column prop="date" label="开始日期" width="120">
           <template #default="{ row }">
             {{ formatDate(row.date) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="endDate" label="结束日期" width="120">
+          <template #default="{ row }">
+            {{ row.endDate ? formatDate(row.endDate) : '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="priority" label="优先级" width="90">
+          <template #default="{ row }">
+            {{ row.priority ?? 0 }}
           </template>
         </el-table-column>
         <el-table-column prop="overrideType" label="覆盖类型" width="120">
@@ -47,8 +57,11 @@
             v-model="form.endDate"
             type="date"
             value-format="YYYY-MM-DD"
-            placeholder="选择日期【可选】"
+            placeholder="选择日期（可选）"
           />
+        </el-form-item>
+        <el-form-item label="优先级">
+          <el-input-number v-model="form.priority" :min="0" :max="99" />
         </el-form-item>
         <el-form-item label="覆盖类型" required>
           <el-select v-model="form.overrideType">
@@ -123,21 +136,15 @@ const form = ref<Partial<CalendarOverride>>({
   overrideType: '上班',
   scope: '全员',
   target: '',
-  reason: ''
+  reason: '',
+  priority: 0
 })
 
-const availableGroups = computed(() => {
-  return groups.value
-})
-
-const availablePersons = computed(() => {
-  return persons.value
-})
-
+const availableGroups = computed(() => groups.value)
+const availablePersons = computed(() => persons.value)
 
 const dialogTitle = computed(() => editingIndex.value !== null ? '编辑调休' : '新增调休')
 
-// 初始化时加载数据
 onMounted(async () => {
   await loadCalendarOverrides()
   await loadPersons()
@@ -194,7 +201,8 @@ const handleAdd = () => {
     overrideType: '上班',
     scope: '全员',
     target: '',
-    reason: ''
+    reason: '',
+    priority: 0
   }
   dialogVisible.value = true
 }
@@ -212,11 +220,11 @@ const handleDelete = async (index: number) => {
       ElMessage.error('无效的调休记录或缺少ID')
       return
     }
-    
+
     await ElMessageBox.confirm('确定要删除这条调休记录吗？', '提示', {
       type: 'warning'
     })
-    
+
     loading.value = true
     await api.deleteCalendarOverride(override.id)
     await loadCalendarOverrides()
@@ -238,52 +246,48 @@ const handleSubmit = async () => {
     ElMessage.warning('请填写完整信息')
     return
   }
-  if (
-    (form.value.scope === '指定组' || form.value.scope === '指定人员') &&
-    !form.value.target
-  ) {
+  if ((form.value.scope === '指定组' || form.value.scope === '指定人员') && !form.value.target) {
     ElMessage.warning('请选择目标')
     return
   }
 
   try {
     loading.value = true
-    
+
     if (editingIndex.value !== null) {
-      // 编辑现有调休
       const override = overrides.value[editingIndex.value]
       if (!override || !override.id) {
         ElMessage.error('无效的调休记录或ID')
         return
       }
-      
+
       const updatedOverride = await api.updateCalendarOverride(override.id, {
         ...override,
         ...form.value,
         id: override.id
       } as CalendarOverride)
-      
+
       if (updatedOverride) {
         await loadCalendarOverrides()
         ElMessage.success('调休记录已更新')
       }
     } else {
-      // 创建新调休
       const newOverride = await api.createCalendarOverride({
         date: form.value.date!,
-        endDate: form.value.endDate,
+        endDate: form.value.endDate || undefined,
         overrideType: form.value.overrideType!,
-        scope: form.value.scope,
-        target: form.value.target,
-        reason: form.value.reason
+        scope: form.value.scope!,
+        target: form.value.target || undefined,
+        reason: form.value.reason || '',
+        priority: form.value.priority ?? 0
       })
-      
+
       if (newOverride) {
         overrides.value.push(newOverride)
         ElMessage.success('调休记录已创建')
       }
     }
-    
+
     dialogVisible.value = false
   } catch (error) {
     console.error('保存调休记录失败:', error)

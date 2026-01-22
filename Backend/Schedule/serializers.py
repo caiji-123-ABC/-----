@@ -28,12 +28,6 @@ class AbsenceSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class PersonOverrideSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = PersonOverride
-        fields = '__all__'
-
-
 class CalendarOverrideSerializer(serializers.ModelSerializer):
     class Meta:
         model = CalendarOverride
@@ -50,5 +44,4 @@ class WeekRotationConfigSerializer(serializers.ModelSerializer):
     class Meta:
         model = WeekRotationConfig
         fields = '__all__'
-
 

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="page-container">
     <el-card>
       <template #header>
@@ -8,31 +8,31 @@
         </div>
       </template>
       <el-table :data="absences" border style="width: 100%" v-loading="loading">
-        <el-table-column prop="person" label="人员ID" width="80" />
-        <el-table-column prop="startDate" label="开始日期" width="120">
+        <el-table-column prop="person" label="人员ID" min-width="80" />
+        <el-table-column prop="startDate" label="开始日期" min-width="120">
           <template #default="{ row }">
             {{ formatDate(row.startDate) }}
           </template>
         </el-table-column>
-        <el-table-column prop="endDate" label="结束日期" width="120">
+        <el-table-column prop="endDate" label="结束日期" min-width="120">
           <template #default="{ row }">
             {{ formatDate(row.endDate) }}
           </template>
         </el-table-column>
-        <el-table-column prop="type" label="类型" width="100">
+        <el-table-column prop="type" label="类型" min-width="100">
           <template #default="{ row }">
             {{ row.type }}
           </template>
         </el-table-column>
-        <el-table-column prop="reason" label="原因" width="120" />
-        <el-table-column prop="countAsRest" label="是否算休息" width="100">
+        <el-table-column prop="reason" label="原因" min-width="140" />
+        <el-table-column prop="countAsRest" label="是否算休息" min-width="110">
           <template #default="{ row }">
             <el-tag :type="row.countAsRest ? 'success' : 'info'">
               {{ row.countAsRest ? '是' : '否' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="操作" min-width="140">
           <template #default="{ row, $index }">
             <el-button link type="primary" @click="handleEdit(row, $index)">编辑</el-button>
             <el-button link type="danger" @click="handleDelete($index)">删除</el-button>
@@ -122,13 +122,9 @@ const form = ref<Partial<Absence>>({
   countAsRest: true
 })
 
-const availablePersons = computed(() => {
-  return persons.value
-})
-
+const availablePersons = computed(() => persons.value)
 const dialogTitle = computed(() => editingIndex.value !== null ? '编辑请假' : '新增请假')
 
-// 初始化时加载数据
 onMounted(async () => {
   await loadAbsences()
   await loadPersons()
@@ -175,14 +171,14 @@ const handleDelete = async (index: number) => {
       ElMessage.error('无效的请假记录或缺少ID')
       return
     }
-    
+
     await ElMessageBox.confirm('确定要删除这条请假记录吗？', '提示', {
       type: 'warning'
     })
-    
+
     loading.value = true
     await api.deleteAbsence(absence.id)
-    await loadAbsences() // 重新加载数据
+    await loadAbsences()
     ElMessage.success('删除成功')
   } catch (error) {
     if (error instanceof Error && error.message.includes('cancel')) {
@@ -204,28 +200,25 @@ const handleSubmit = async () => {
 
   try {
     loading.value = true
-    
+
     if (editingIndex.value !== null) {
-      // 编辑现有请假
       const absence = absences.value[editingIndex.value]
       if (!absence || !absence.id) {
         ElMessage.error('无效的请假记录或ID')
         return
       }
-      
+
       const updatedAbsence = await api.updateAbsence(absence.id, {
         ...absence,
         ...form.value,
         id: absence.id
       } as Absence)
-      
+
       if (updatedAbsence) {
-        // 重新加载数据以确保与服务器同步
         await loadAbsences()
         ElMessage.success('请假记录已更新')
       }
     } else {
-      // 创建新请假
       const newAbsence = await api.createAbsence({
         person: form.value.person!,
         startDate: form.value.startDate!,
@@ -234,13 +227,13 @@ const handleSubmit = async () => {
         reason: form.value.reason || '',
         countAsRest: form.value.countAsRest || false
       })
-      
+
       if (newAbsence) {
         absences.value.push(newAbsence)
         ElMessage.success('请假记录已创建')
       }
     }
-    
+
     dialogVisible.value = false
   } catch (error) {
     console.error('保存请假记录失败:', error)
