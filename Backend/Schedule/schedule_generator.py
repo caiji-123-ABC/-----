@@ -3,7 +3,7 @@
 """
 from datetime import datetime, timedelta
 from django.db.models import Q
-from .models import Person, ShiftDefinition, Absence, CalendarOverride, WeekRotationConfig
+from .models import Person, ShiftDefinition, Absence, CalendarOverride
 
 
 def generate_schedule(year_month: str):
@@ -19,8 +19,6 @@ def generate_schedule(year_month: str):
     """
     year, month = map(int, year_month.split('-'))
 
-    violations = []
-
     start_date = datetime(year, month, 1)
     if month == 12:
         end_date = datetime(year + 1, 1, 1) - timedelta(days=1)
@@ -31,16 +29,8 @@ def generate_schedule(year_month: str):
 
     persons = Person.objects.select_related('shift_type').all()
 
-    # 获取大小周起始配置
-    try:
-        month_str = f"{year}-{month:02d}"
-        week_rotation_config = WeekRotationConfig.objects.filter(month=month_str).first()
-        if week_rotation_config:
-            first_week_type = week_rotation_config.first_week_type
-        else:
-            first_week_type = '大周'
-    except Exception:
-        first_week_type = '大周'
+    # 大小周默认从大周开始
+    first_week_type = '大周'
 
     # 按班次类型组织大小周配置
     week_configs = {}
@@ -191,6 +181,5 @@ def generate_schedule(year_month: str):
                 item.get('shift') or '',
                 item.get('person_name') or ''
             )
-        ),
-        'violations': violations
+        )
     }

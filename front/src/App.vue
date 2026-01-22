@@ -11,7 +11,7 @@
       </div>
     </el-header>
     <el-container>
-      <el-aside width="280px" class="app-sidebar">
+      <el-aside width="300px" class="app-sidebar">
         <el-menu
           :default-active="activeMenu"
           @select="handleMenuSelect"
@@ -20,6 +20,10 @@
           text-color="#303133"
           active-text-color="#409EFF"
         >
+          <el-menu-item index="schedule">
+            <el-icon><Grid /></el-icon>
+            <span>排班生成</span>
+          </el-menu-item>
           <el-menu-item index="shifts">
             <el-icon><Clock /></el-icon>
             <span>班次定义</span>
@@ -40,23 +44,10 @@
             <el-icon><Calendar /></el-icon>
             <span>调休/节假日</span>
           </el-menu-item>
-          <el-menu-item index="week-rotation">
-            <el-icon><Refresh /></el-icon>
-            <span>大小周配置</span>
-          </el-menu-item>
-          <el-menu-item index="schedule">
-            <el-icon><Grid /></el-icon>
-            <span>排班生成</span>
-          </el-menu-item>
-          <el-menu-item index="violations">
-            <el-icon><Warning /></el-icon>
-            <span>违规明细</span>
-          </el-menu-item>
         </el-menu>
       </el-aside>
       <el-main class="app-main">
-        <router-view v-if="dataLoaded" />
-        <div v-else class="loading">正在加载数据...</div>
+        <router-view />
       </el-main>
     </el-container>
   </el-container>
@@ -71,41 +62,20 @@ import {
   OfficeBuilding,
   User,
   DocumentRemove,
-  Edit,
-  Refresh,
-  Grid,
-  Warning
+  Grid
 } from '@element-plus/icons-vue'
-import { 
-  loadFromApi, 
-  loadFromLocalStorage, 
-} from './stores/scheduleStore'
-
-
 const router = useRouter()
 const route = useRoute()
-const activeMenu = ref('shifts')
-const dataLoaded = ref(false)
+const activeMenu = ref('schedule')
 
-onMounted(async () => {
+onMounted(() => {
   // 初始化路由
   if (route.path === '/') {
-    router.push('/shifts')
+    router.push('/schedule')
   } else {
     activeMenu.value = route.path.slice(1) || 'shifts'
   }
   
-  // 从后端加载数据
-  try {
-    await loadFromApi()
-    console.log("成功从后端加载数据")
-  } catch (error) {
-    console.error("从后端加载数据失败，将尝试从本地加载:", error)
-    // 如果从后端加载失败，尝试从localStorage加载
-    loadFromLocalStorage()
-  }
-  
-  dataLoaded.value = true
 })
 
 const handleMenuSelect = (key: string) => {
@@ -168,16 +138,7 @@ const handleMenuSelect = (key: string) => {
   background-color: #f5f7fa;
   padding: 24px;
   overflow-y: auto;
-  font-size: 16px;
-}
-
-.loading {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-  font-size: 18px;
-  color: #909399;
+  font-size: 17px;
 }
 
 /* 菜单项悬停效果 */
@@ -185,15 +146,15 @@ const handleMenuSelect = (key: string) => {
   margin: 0 12px;
   border-radius: 8px;
   transition: all 0.3s ease;
-  height: 58px;
+  height: 64px;
   display: flex;
   align-items: center;
   padding-left: 20px !important;
-  font-size: 16px;
+  font-size: 18px;
 }
 
 .sidebar-menu .el-menu-item .el-icon {
-  font-size: 20px;
+  font-size: 22px;
 }
 
 .sidebar-menu .el-menu-item:hover {

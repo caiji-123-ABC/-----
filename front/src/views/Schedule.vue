@@ -64,32 +64,7 @@
               </div>
             </el-card>
           </el-col>
-          <el-col :xs="24" :sm="8">
-            <el-card 
-              shadow="hover" 
-              :class="['summary-item', violationCount > 0 ? 'summary-item-warning' : 'summary-item-success']"
-            >
-              <div class="summary-content">
-                <div class="summary-icon" :class="violationCount > 0 ? 'bg-danger' : 'bg-success'">
-                  <el-icon><Warning /></el-icon>
-                </div>
-                <div class="summary-text">
-                  <div class="summary-number">{{ violationCount }}</div>
-                  <div class="summary-label">违规数量</div>
-                </div>
-              </div>
-            </el-card>
-          </el-col>
         </el-row>
-
-        <el-alert
-          v-if="violationCount > 0"
-          :title="`发现 ${violationCount} 条规则违规，请查看详情`"
-          type="warning"
-          :closable="false"
-          show-icon
-          class="warning-alert"
-        />
 
         <div class="table-container">
           <el-table
@@ -124,23 +99,21 @@
               </template>
               <template #default="{ row }">
                 <div
-                  :class="[
-                    'schedule-cell',
-                    row[day.date]?.status === '休息' ? 'rest-day-cell' : 'shift-day-cell',
-                    row[day.date]?.isViolation ? 'violation-cell' : ''
-                  ]"
-                  :style="getCellStyle(row[day.date])"
-                >
+                    :class="[
+                      'schedule-cell',
+                      row[day.date]?.status === '休息' ? 'rest-day-cell' : 'shift-day-cell'
+                    ]"
+                    :style="getCellStyle(row[day.date])"
+                  >
                   <div v-if="row[day.date]">
                     <div v-if="row[day.date].status === '上班'" class="shift-info">
                       <span class="shift-text">{{ row[day.date].shift }}</span>
                     </div>
-                    <div v-else class="status-info">
-                      {{ row[day.date].status }}
+                      <div v-else class="status-info">
+                        {{ row[day.date].status }}
+                      </div>
                     </div>
-                    <div v-if="row[day.date].isViolation" class="violation-mark">⚠</div>
                   </div>
-                </div>
               </template>
             </el-table-column>
           </el-table>
@@ -152,7 +125,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { Refresh, Download, Warning, User, Clock } from '@element-plus/icons-vue'
+import { Refresh, Download, User, Clock } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
 import { api, type ScheduleItem } from '../utils/api'
 import { ElMessage } from 'element-plus'
@@ -164,10 +137,7 @@ const loading = ref(false)
 
 // 后端返回的原始排班数据
 const scheduleData = ref<ScheduleItem[]>([])
-const violations = ref<any[]>([])
-
 const hasResults = computed(() => scheduleData.value.length > 0)
-const violationCount = computed(() => violations.value.length)
 
 const monthDays = computed(() => {
   const start = dayjs(selectedMonth.value + '-01')
@@ -231,12 +201,10 @@ const scheduleTable = computed(() => {
     const groupName = item.group || '未分组'
     const row = personMap.get(`${groupName}__${item.person_name}`)
     if (row) {
-      row[item.date] = {
-        status: item.status,
-        shift: item.shift,
-        isViolation: item.is_violation,
-        violationReason: item.violationReason
-      }
+        row[item.date] = {
+          status: item.status,
+          shift: item.shift,
+        }
     }
   })
 
@@ -279,18 +247,26 @@ const getCellStyle = (cell?: { status: string; shift?: string }) => {
   }
 }
 
-const groupRowSpans = computed(() => {
-  const spans: number[] = []
-  let index = 0
-  const rows = scheduleTable.value
+  const groupRowSpans = computed(() => {
+    const spans: number[] = []
+    let index = 0
+    const rows = scheduleTable.value
 
-  while (index < rows.length) {
-    const groupName = rows[index].group
-    let count = 1
-    while (index + count < rows.length && rows[index + count].group === groupName) {
-      count += 1
-    }
-    spans[index] = count
+    while (index < rows.length) {
+      const currentRow = rows[index]
+      if (!currentRow) {
+        break
+      }
+      const groupName = currentRow.group
+      let count = 1
+      while (index + count < rows.length) {
+        const nextRow = rows[index + count]
+        if (!nextRow || nextRow.group !== groupName) {
+          break
+        }
+        count += 1
+      }
+      spans[index] = count
     for (let i = 1; i < count; i += 1) {
       spans[index + i] = 0
     }
@@ -323,12 +299,7 @@ const handleGenerate = async () => {
     const result = await api.generateSchedule(selectedMonth.value)
     if (result) {
       scheduleData.value = result.schedule
-      violations.value = result.violations
-      if (result.violations.length > 0) {
-        ElMessage.warning(`排班已生成，但发现 ${result.violations.length} 条违规`)
-      } else {
-        ElMessage.success('排班生成成功')
-      }
+      ElMessage.success('排班生成成功')
     }
   } catch (error) {
     console.error('生成排班失败:', error)
@@ -358,8 +329,6 @@ const handleExport = () => {
       group: item.group,
       shift: item.shift || '',
       status: item.status,
-      violation: item.is_violation ? '是' : '否',
-      violationReason: item.violationReason || ''
     })
   })
 
@@ -442,14 +411,6 @@ watch(selectedMonth, (newVal) => {
   transform: translateY(-4px);
 }
 
-.summary-item-warning {
-  border: 1px solid #e6a23c;
-}
-
-.summary-item-success {
-  border: 1px solid #67c23a;
-}
-
 .summary-content {
   display: flex;
   align-items: center;
@@ -491,11 +452,6 @@ watch(selectedMonth, (newVal) => {
 .summary-label {
   font-size: 14px;
   color: #909399;
-}
-
-.warning-alert {
-  margin-bottom: 16px;
-  border-radius: 8px;
 }
 
 .table-container {
@@ -575,18 +531,6 @@ watch(selectedMonth, (newVal) => {
 .status-info {
   color: #909399;
   font-size: 11px;
-}
-
-.violation-mark {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  color: #f56c6c;
-  font-size: 14px;
-}
-
-.violation-cell {
-  background-color: #fef0f0 !important;
 }
 
 .rest-day-cell {

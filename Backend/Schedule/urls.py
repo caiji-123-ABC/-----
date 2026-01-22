@@ -17,14 +17,7 @@ urlpatterns = [
     path('calendar-overrides/', views.calendar_overrides_list, name='calendar-overrides-list'),
     path('calendar-overrides/<int:pk>/', views.calendar_override_detail, name='calendar-override-detail'),
 
-    path('special-date-rules/', views.special_date_rules_list, name='special-date-rules-list'),
-    path('special-date-rules/<int:pk>/', views.special_date_rule_detail, name='special-date-rule-detail'),
-
-    path('week-rotation-configs/', views.week_rotation_configs_list, name='week-rotation-configs-list'),
-    path('week-rotation-configs/<int:pk>/', views.week_rotation_config_detail, name='week-rotation-config-detail'),
-
     path('week-schedules/', views.week_schedule_config, name='week-schedule-config'),
-    path('week-rotation-configs-full/', views.week_rotation_config, name='week-rotation-config-full'),
 
     path('generate-schedule/', views.generate_schedule_view, name='generate-schedule'),
 ]

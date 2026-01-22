@@ -33,15 +33,3 @@ class CalendarOverrideSerializer(serializers.ModelSerializer):
         model = CalendarOverride
         fields = '__all__'
 
-
-class SpecialDateRuleSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = SpecialDateRule
-        fields = '__all__'
-
-
-class WeekRotationConfigSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = WeekRotationConfig
-        fields = '__all__'
-

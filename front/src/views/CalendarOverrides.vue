@@ -3,8 +3,8 @@
     <el-card>
       <template #header>
         <div class="card-header">
-          <span>调休/节假日管理</span>
-          <el-button type="primary" @click="handleAdd" :icon="Plus">新增调休</el-button>
+          <span>休假/节假日管理</span>
+          <el-button type="primary" @click="handleAdd" :icon="Plus">新增休假</el-button>
         </div>
       </template>
       <el-table :data="overrides" border style="width: 100%" v-loading="loading">
@@ -143,7 +143,7 @@ const form = ref<Partial<CalendarOverride>>({
 const availableGroups = computed(() => groups.value)
 const availablePersons = computed(() => persons.value)
 
-const dialogTitle = computed(() => editingIndex.value !== null ? '编辑调休' : '新增调休')
+const dialogTitle = computed(() => editingIndex.value !== null ? '编辑休假' : '新增休假')
 
 onMounted(async () => {
   await loadCalendarOverrides()
@@ -217,11 +217,11 @@ const handleDelete = async (index: number) => {
   try {
     const override = overrides.value[index]
     if (!override || !override.id) {
-      ElMessage.error('无效的调休记录或缺少ID')
+      ElMessage.error('无效的休假记录或缺少ID')
       return
     }
 
-    await ElMessageBox.confirm('确定要删除这条调休记录吗？', '提示', {
+    await ElMessageBox.confirm('确定要删除这条休假记录吗？', '提示', {
       type: 'warning'
     })
 
@@ -233,8 +233,8 @@ const handleDelete = async (index: number) => {
     if (error instanceof Error && error.message.includes('cancel')) {
       // 用户取消
     } else {
-      console.error('删除调休记录失败:', error)
-      ElMessage.error('删除调休记录失败')
+      console.error('删除休假记录失败:', error)
+      ElMessage.error('删除休假记录失败')
     }
   } finally {
     loading.value = false
@@ -257,7 +257,7 @@ const handleSubmit = async () => {
     if (editingIndex.value !== null) {
       const override = overrides.value[editingIndex.value]
       if (!override || !override.id) {
-        ElMessage.error('无效的调休记录或ID')
+        ElMessage.error('无效的休假记录或ID')
         return
       }
 
@@ -269,7 +269,7 @@ const handleSubmit = async () => {
 
       if (updatedOverride) {
         await loadCalendarOverrides()
-        ElMessage.success('调休记录已更新')
+        ElMessage.success('休假记录已更新')
       }
     } else {
       const newOverride = await api.createCalendarOverride({
@@ -284,14 +284,14 @@ const handleSubmit = async () => {
 
       if (newOverride) {
         overrides.value.push(newOverride)
-        ElMessage.success('调休记录已创建')
+        ElMessage.success('休假记录已创建')
       }
     }
 
     dialogVisible.value = false
   } catch (error) {
-    console.error('保存调休记录失败:', error)
-    ElMessage.error('保存调休记录失败')
+    console.error('保存休假记录失败:', error)
+    ElMessage.error('保存休假记录失败')
   } finally {
     loading.value = false
   }

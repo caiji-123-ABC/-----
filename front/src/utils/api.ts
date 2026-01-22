@@ -41,15 +41,6 @@ export interface Absence {
   type: string;
 }
 
-export interface PersonOverride {
-  id: number;
-  person: number;
-  date: string;
-  type: string;
-  reason: string;
-  remark?: string;
-}
-
 export interface CalendarOverride {
   id: number;
   date: string;
@@ -59,19 +50,6 @@ export interface CalendarOverride {
   target?: string;
   reason?: string;
   priority?: number;
-}
-
-export interface SpecialDateRule {
-  id: number;
-  date: string;
-  description: string;
-  isWorkingDay: boolean;
-}
-
-export interface WeekRotationConfig {
-  id: number;
-  month: string;
-  firstWeekType: string;
 }
 
 export interface GlobalRules {
@@ -98,7 +76,6 @@ export interface ScheduleItem {
 
 export interface ScheduleResult {
   schedule: ScheduleItem[];
-  violations: any[];
 }
 
 // unified response handler
@@ -283,7 +260,7 @@ export const api = {
   // Person management
   getPersons: async (): Promise<Person[]> => {
     const response = await fetch(`${API_BASE_URL}/persons/`);
-    return handleResponse(response);
+    return (await handleResponse(response)) ?? [];
   },
 
   async createPerson(person: Omit<Person, 'id'>): Promise<Person> {
@@ -365,41 +342,6 @@ export const api = {
     await handleResponse(response);
   },
 
-  // Person overrides
-  getPersonOverrides: async (): Promise<PersonOverride[] | null> => {
-    const response = await fetch(`${API_BASE_URL}/person-overrides/`);
-    return handleResponse(response);
-  },
-
-  createPersonOverride: async (override: Omit<PersonOverride, 'id'>): Promise<PersonOverride | null> => {
-    const response = await fetch(`${API_BASE_URL}/person-overrides/`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(override),
-    });
-    return handleResponse(response);
-  },
-
-  updatePersonOverride: async (id: number, override: PersonOverride): Promise<PersonOverride | null> => {
-    const response = await fetch(`${API_BASE_URL}/person-overrides/${id}/`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(override),
-    });
-    return handleResponse(response);
-  },
-
-  deletePersonOverride: async (id: number): Promise<void> => {
-    const response = await fetch(`${API_BASE_URL}/person-overrides/${id}/`, {
-      method: 'DELETE',
-    });
-    await handleResponse(response);
-  },
-
   // Calendar overrides
   getCalendarOverrides: async (): Promise<CalendarOverride[]> => {
     const response = await fetch(`${API_BASE_URL}/calendar-overrides/`);
@@ -438,80 +380,10 @@ export const api = {
     await handleResponse(response);
   },
 
-  // Special date rules
-  getSpecialDateRules: async (): Promise<SpecialDateRule[]> => {
-    const response = await fetch(`${API_BASE_URL}/special-date-rules/`);
-    return handleResponse(response);
-  },
-
-  createSpecialDateRule: async (rule: Omit<SpecialDateRule, 'id'>): Promise<SpecialDateRule | null> => {
-    const response = await fetch(`${API_BASE_URL}/special-date-rules/`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(rule),
-    });
-    return handleResponse(response);
-  },
-
-  updateSpecialDateRule: async (id: number, rule: SpecialDateRule): Promise<SpecialDateRule | null> => {
-    const response = await fetch(`${API_BASE_URL}/special-date-rules/${id}/`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(rule),
-    });
-    return handleResponse(response);
-  },
-
-  deleteSpecialDateRule: async (id: number): Promise<void> => {
-    const response = await fetch(`${API_BASE_URL}/special-date-rules/${id}/`, {
-      method: 'DELETE',
-    });
-    await handleResponse(response);
-  },
-
-  // Week rotation configs
-  getWeekRotationConfigs: async (): Promise<WeekRotationConfig[]> => {
-    const response = await fetch(`${API_BASE_URL}/week-rotation-configs/`);
-    return handleResponse(response);
-  },
-
-  createWeekRotationConfig: async (config: Omit<WeekRotationConfig, 'id'>): Promise<WeekRotationConfig | null> => {
-    const response = await fetch(`${API_BASE_URL}/week-rotation-configs/`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(config),
-    });
-    return handleResponse(response);
-  },
-
-  updateWeekRotationConfig: async (id: number, config: WeekRotationConfig): Promise<WeekRotationConfig | null> => {
-    const response = await fetch(`${API_BASE_URL}/week-rotation-configs/${id}/`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(config),
-    });
-    return handleResponse(response);
-  },
-
-  deleteWeekRotationConfig: async (id: number): Promise<void> => {
-    const response = await fetch(`${API_BASE_URL}/week-rotation-configs/${id}/`, {
-      method: 'DELETE',
-    });
-    await handleResponse(response);
-  },
-
   // Week schedule
   getWeekSchedules: async (): Promise<(ShiftDefinition & { bigWeek?: number[]; smallWeek?: number[] })[]> => {
     const response = await fetch(`${API_BASE_URL}/week-schedules/`);
-    return handleResponse(response);
+    return (await handleResponse(response)) ?? [];
   },
 
   updateWeekSchedules: async (schedules: { shiftType: number; big_week: number[]; small_week: number[] }[]): Promise<{ message: string }> => {
@@ -522,7 +394,7 @@ export const api = {
       },
       body: JSON.stringify(schedules),
     });
-    return handleResponse(response);
+    return (await handleResponse(response)) ?? { message: '' };
   },
 
   // Schedule generator

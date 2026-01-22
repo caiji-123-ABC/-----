@@ -7,15 +7,13 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework import status
-from .models import ShiftDefinition, GroupConfig, Person, Absence, CalendarOverride, SpecialDateRule, WeekRotationConfig
+from .models import ShiftDefinition, GroupConfig, Person, Absence, CalendarOverride
 from .serializers import (
     ShiftDefinitionSerializer,
     GroupConfigSerializer,
     PersonSerializer,
     AbsenceSerializer,
     CalendarOverrideSerializer,
-    SpecialDateRuleSerializer,
-    WeekRotationConfigSerializer,
 )
 from .schedule_generator import generate_schedule
 import json
@@ -56,28 +54,6 @@ def week_schedule_config(request):
 
         return Response({'message': '大小周配置已更新'}, status=201)
 
-
-@api_view(['GET', 'POST'])
-@permission_classes([AllowAny])
-def week_rotation_config(request):
-    """
-    获取或更新月份大小周配置
-    """
-    if request.method == 'GET':
-        configs = WeekRotationConfig.objects.all()
-        serializer = WeekRotationConfigSerializer(configs, many=True)
-        return Response(serializer.data)
-
-    if request.method == 'POST':
-        data = request.data
-        WeekRotationConfig.objects.all().delete()
-        for config_data in data:
-            serializer = WeekRotationConfigSerializer(data=config_data)
-            if serializer.is_valid():
-                serializer.save()
-            else:
-                return Response(serializer.errors, status=400)
-        return Response({'message': '月份大小周配置已更新'}, status=201)
 
 
 @api_view(['GET', 'POST'])
@@ -300,92 +276,8 @@ def calendar_override_detail(request, pk):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-@api_view(['GET', 'POST'])
-def special_date_rules_list(request):
-    """
-    获取或创建特殊日期规则
-    """
-    if request.method == 'GET':
-        special_date_rules = SpecialDateRule.objects.all()
-        serializer = SpecialDateRuleSerializer(special_date_rules, many=True)
-        return Response(serializer.data)
-
-    if request.method == 'POST':
-        serializer = SpecialDateRuleSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@api_view(['GET', 'PUT', 'DELETE'])
-def special_date_rule_detail(request, pk):
-    """
-    获取、更新或删除特定特殊日期规则
-    """
-    try:
-        special_date_rule = SpecialDateRule.objects.get(pk=pk)
-    except SpecialDateRule.DoesNotExist:
-        return Response(status=status.HTTP_404_NOT_FOUND)
-
-    if request.method == 'GET':
-        serializer = SpecialDateRuleSerializer(special_date_rule)
-        return Response(serializer.data)
-
-    if request.method == 'PUT':
-        serializer = SpecialDateRuleSerializer(special_date_rule, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    if request.method == 'DELETE':
-        special_date_rule.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-@api_view(['GET', 'POST'])
-def week_rotation_configs_list(request):
-    """
-    获取或创建大小周配置
-    """
-    if request.method == 'GET':
-        week_rotation_configs = WeekRotationConfig.objects.all()
-        serializer = WeekRotationConfigSerializer(week_rotation_configs, many=True)
-        return Response(serializer.data)
-
-    if request.method == 'POST':
-        serializer = WeekRotationConfigSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-@api_view(['GET', 'PUT', 'DELETE'])
-def week_rotation_config_detail(request, pk):
-    """
-    获取、更新或删除特定大小周配置
-    """
-    try:
-        week_rotation_config = WeekRotationConfig.objects.get(pk=pk)
-    except WeekRotationConfig.DoesNotExist:
-        return Response(status=status.HTTP_404_NOT_FOUND)
-
-    if request.method == 'GET':
-        serializer = WeekRotationConfigSerializer(week_rotation_config)
-        return Response(serializer.data)
-
-    if request.method == 'PUT':
-        serializer = WeekRotationConfigSerializer(week_rotation_config, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    if request.method == 'DELETE':
-        week_rotation_config.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @api_view(['POST'])

@@ -85,33 +85,6 @@ class CalendarOverride(models.Model):
         verbose_name_plural = '日历覆盖'
 
 
-class SpecialDateRule(models.Model):
-    """特殊日期规则"""
-    date = models.DateField(unique=True)
-    description = models.CharField(max_length=100)
-    is_working_day = models.BooleanField(default=False)
-
-    class Meta:
-        db_table = 'special_date_rule'
-
-
-class WeekRotationConfig(models.Model):
-    """大小周配置- 每个月使用哪种周类型"""
-    MONTH_CHOICES = [
-        ('一月', '一月'), ('二月', '二月'), ('三月', '三月'), ('四月', '四月'),
-        ('五月', '五月'), ('六月', '六月'), ('七月', '七月'), ('八月', '八月'),
-        ('九月', '九月'), ('十月', '十月'), ('十一月', '十一月'), ('十二月', '十二月')
-    ]
-
-    month = models.CharField(max_length=10, choices=MONTH_CHOICES)
-    first_week_type = models.CharField(max_length=10, choices=[('大周', '大周'), ('小周', '小周')])
-    year = models.IntegerField()
-
-    class Meta:
-        db_table = 'week_rotation_config'
-        unique_together = ('month', 'year')
-
-
 # class GlobalRules(models.Model):
 #     """全局规则"""
 #     min_consecutive_work_days = models.IntegerField(default=5)
