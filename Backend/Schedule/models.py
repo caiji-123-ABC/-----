@@ -51,9 +51,10 @@ class ShiftRotationGroup(models.Model):
 class Person(models.Model):
     """人员信息"""
     name = models.CharField(max_length=50)
-    group = models.CharField(max_length=50)
+    group = models.ForeignKey(GroupConfig, on_delete=models.SET_NULL, null=True, blank=True)
     shift_type = models.ForeignKey(ShiftDefinition, on_delete=models.SET_NULL, null=True, blank=True)
     rotation_group = models.ForeignKey(ShiftRotationGroup, on_delete=models.SET_NULL, null=True, blank=True)
+    uid = models.CharField(max_length=64, null=True, blank=True, verbose_name='UID')
 
     class Meta:
         db_table = 'person'
@@ -106,17 +107,3 @@ class CalendarOverride(models.Model):
         db_table = 'calendar_override'
         verbose_name = '日历覆盖'
         verbose_name_plural = '日历覆盖'
-
-
-# class GlobalRules(models.Model):
-#     """全局规则"""
-#     min_consecutive_work_days = models.IntegerField(default=5)
-#     max_consecutive_work_days = models.IntegerField(default=6)
-#     forbidden_rest_days = models.JSONField(default=list)
-#     allowed_rest_days = models.JSONField(default=list)
-#     small_week_must_consecutive = models.BooleanField(default=True)
-#     week_rotation_mode = models.CharField(max_length=20, default='全员同步')
-#     override_week_rules = models.BooleanField(default=False)
-#
-#     class Meta:
-#         db_table = 'global_rules'

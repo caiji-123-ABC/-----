@@ -25,6 +25,7 @@ class ShiftRotationGroupSerializer(serializers.ModelSerializer):
 class PersonSerializer(serializers.ModelSerializer):
     shiftType = serializers.CharField(source='shift_type.name', read_only=True)
     rotationGroupName = serializers.CharField(source='rotation_group.name', read_only=True)
+    groupName = serializers.CharField(source='group.name', read_only=True)
 
     class Meta:
         model = Person
