@@ -195,7 +195,7 @@ def persons_list(request):
     获取或创建人员信息
     """
     if request.method == 'GET':
-        persons = Person.objects.select_related('shift_type').all()
+        persons = Person.objects.select_related('group', 'shift_type', 'rotation_group').all()
         serializer = PersonSerializer(persons, many=True)
         return Response(serializer.data)
 
@@ -213,7 +213,7 @@ def person_detail(request, pk):
     获取、更新或删除特定人员信息
     """
     try:
-        person = Person.objects.select_related('shift_type').get(pk=pk)
+        person = Person.objects.select_related('group', 'shift_type', 'rotation_group').get(pk=pk)
     except Person.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
 
@@ -338,14 +338,72 @@ def generate_schedule_view(request):
     """
     try:
         year_month = request.data.get('year_month')
+        base_week_type = request.data.get('base_week_type') or '大周'
+        cross_month_continuous = request.data.get('cross_month_continuous')
+        if cross_month_continuous is None:
+            cross_month_continuous = True
         if not year_month:
             return Response(
                 {'error': '缺少 year_month 参数'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        result = generate_schedule(year_month)
+        result = generate_schedule(
+            year_month,
+            base_week_type=base_week_type,
+            cross_month_continuous=cross_month_continuous
+        )
         return Response(result, status=status.HTTP_200_OK)
+    
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def generate_year_schedule_view(request):
+    """
+    生成全年排班
+
+    请求参数:
+    {
+        "year": "YYYY"
+    }
+
+    返回:
+    {
+        "schedules": {
+            "YYYY-MM": {...},
+            ...
+        }
+    }
+    """
+    try:
+        year_str = request.data.get('year')
+        if not year_str:
+            return Response(
+                {'error': '缺少year参数'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        year = int(year_str)
+        schedules = {}
+        base_week_type = request.data.get('base_week_type') or '大周'
+        cross_month_continuous = request.data.get('cross_month_continuous')
+        if cross_month_continuous is None:
+            cross_month_continuous = True
+        for month in range(1, 13):
+            year_month = f"{year}-{month:02d}"
+            schedules[year_month] = generate_schedule(
+                year_month,
+                base_week_type=base_week_type,
+                cross_month_continuous=cross_month_continuous
+            )
+
+        return Response({'schedules': schedules}, status=status.HTTP_200_OK)
 
     except Exception as e:
         return Response(

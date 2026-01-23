@@ -25,8 +25,10 @@ export interface GroupConfig {
 // Person info
 export interface Person {
   id: number;
+  uid?: string;
   name: string;
-  group: string;
+  group: number | null;
+  groupName?: string;
   shiftType?: ShiftDefinition;
   rotationGroup?: number;
   rotationGroupName?: string;
@@ -79,6 +81,7 @@ export interface ScheduleItem {
   person_id: number;
   person_name: string;
   group: string;
+  rotation_group?: string;
   date: string;
   shift: string;
   status: string;
@@ -88,6 +91,10 @@ export interface ScheduleItem {
 
 export interface ScheduleResult {
   schedule: ScheduleItem[];
+}
+
+export interface YearScheduleResult {
+  schedules: Record<string, ScheduleResult>;
 }
 
 // unified response handler
@@ -161,8 +168,10 @@ function normalizeAbsence(def: any): Absence {
 function normalizePerson(def: any): Person {
   return {
     id: def.id,
+    uid: def.uid,
     name: def.name,
-    group: def.group,
+    group: def.group ?? null,
+    groupName: def.groupName ?? def.group_name,
     shiftType: def.shiftType ?? def.shift_type,
     rotationGroup: def.rotation_group ?? def.rotationGroup,
     rotationGroupName: def.rotationGroupName ?? def.rotation_group_name,
@@ -291,6 +300,7 @@ export const api = {
   async createPerson(person: Omit<Person, 'id'>): Promise<Person> {
     const personData = {
       ...person,
+      uid: person.uid ?? null,
       shift_type: typeof person.shiftType === 'object' ? person.shiftType.id : person.shiftType,
       rotation_group: person.rotationGroup ?? null,
     };
@@ -309,6 +319,7 @@ export const api = {
   async updatePerson(id: number, person: Partial<Person>): Promise<Person> {
     const personData = {
       ...person,
+      uid: person.uid ?? null,
       shift_type: typeof person.shiftType === 'object' ? person.shiftType?.id : person.shiftType,
       rotation_group: person.rotationGroup ?? null,
     };
@@ -460,13 +471,40 @@ export const api = {
   },
 
   // Schedule generator
-  generateSchedule: async (yearMonth: string): Promise<ScheduleResult | null> => {
+  generateSchedule: async (
+    yearMonth: string,
+    baseWeekType?: '大周' | '小周',
+    crossMonthContinuous: boolean = true
+  ): Promise<ScheduleResult | null> => {
     const response = await fetch(`${API_BASE_URL}/generate-schedule/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ year_month: yearMonth }),
+      body: JSON.stringify({
+        year_month: yearMonth,
+        base_week_type: baseWeekType,
+        cross_month_continuous: crossMonthContinuous,
+      }),
+    });
+    return handleResponse(response);
+  },
+
+  generateYearSchedule: async (
+    year: string,
+    baseWeekType?: '大周' | '小周',
+    crossMonthContinuous: boolean = true
+  ): Promise<YearScheduleResult | null> => {
+    const response = await fetch(`${API_BASE_URL}/generate-year-schedule/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        year,
+        base_week_type: baseWeekType,
+        cross_month_continuous: crossMonthContinuous,
+      }),
     });
     return handleResponse(response);
   },

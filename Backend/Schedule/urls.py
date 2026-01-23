@@ -23,4 +23,5 @@ urlpatterns = [
     path('week-schedules/', views.week_schedule_config, name='week-schedule-config'),
 
     path('generate-schedule/', views.generate_schedule_view, name='generate-schedule'),
+    path('generate-year-schedule/', views.generate_year_schedule_view, name='generate-year-schedule'),
 ]

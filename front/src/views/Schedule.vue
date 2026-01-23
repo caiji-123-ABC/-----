@@ -1,6 +1,10 @@
 ﻿<template>
   <div class="schedule-page">
-    <el-card class="schedule-card">
+    <el-card
+      class="schedule-card"
+      v-loading="loading"
+      element-loading-text="正在生成排班..."
+    >
       <template #header>
         <div class="card-header">
           <div class="header-left">
@@ -29,6 +33,23 @@
               placeholder="选择年份"
               style="margin-right: 12px; width: 120px;"
             />
+            <div class="week-type-toggle">
+              <span class="week-type-label">周类型</span>
+              <el-radio-group v-model="baseWeekType" size="small">
+                <el-radio-button label="大周">大周</el-radio-button>
+                <el-radio-button label="小周">小周</el-radio-button>
+              </el-radio-group>
+            </div>
+            <div class="cross-month-toggle">
+              <span class="week-type-label">跨月周类型</span>
+              <el-switch
+                v-model="crossMonthContinuous"
+                active-text="连续"
+                inactive-text="重置"
+                inline-prompt
+                size="small"
+              />
+            </div>
             <el-button type="primary" @click="handleGenerate" :icon="Refresh" size="default" :loading="loading">
               生成排班
             </el-button>
@@ -84,10 +105,12 @@
             :data="scheduleTable"
             border
             style="width: 100%"
-            :max-height="600"
-            :header-cell-style="{background: '#f5f7fa', fontWeight: 'bold'}"
-            :row-style="{height: '50px'}"
-            :span-method="spanMethod"
+              :header-cell-style="{background: '#f5f7fa', fontWeight: 'bold'}"
+              :row-style="{height: '50px'}"
+              :row-class-name="rowClassName"
+              :cell-class-name="cellClassName"
+              :header-cell-class-name="headerCellClassName"
+              :span-method="spanMethod"
             table-layout="fixed"
             :fit="true"
             sticky
@@ -100,7 +123,10 @@
               v-for="day in monthDays"
               :key="day.date"
               :label="day.labelShort"
-              :class-name="day.date === todayDate ? 'today-column' : ''"
+              :class-name="[
+                day.date === todayDate ? 'today-column' : '',
+                day.isWeekStart ? 'week-separator' : ''
+              ]"
               :min-width="day.date === todayDate ? 44 : 40"
               align="center"
             >
@@ -139,9 +165,13 @@
               :data="yearTables[month]?.table || []"
               border
               style="width: 100%"
-              :header-cell-style="{background: '#f5f7fa', fontWeight: 'bold'}"
-              :row-style="{height: '42px'}"
-              :span-method="spanMethodYear(month)"
+                :max-height="600"
+                :header-cell-style="{background: '#f5f7fa', fontWeight: 'bold'}"
+                :row-style="{height: '38px'}"
+                :row-class-name="rowClassNameYear(month)"
+                :cell-class-name="cellClassNameYear(month)"
+                :header-cell-class-name="headerCellClassNameYear(month)"
+                :span-method="spanMethodYear(month)"
               table-layout="fixed"
               :fit="true"
               class="year-table"
@@ -151,9 +181,10 @@
               <el-table-column prop="personName" label="姓名" width="70" fixed="left" 
                                header-align="center" align="center" />
               <el-table-column
-                v-for="day in yearTables[month]?.days || []"
+              v-for="day in yearTables[month]?.days || []"
                 :key="day.date"
                 :label="day.labelShort"
+                :class-name="day.isWeekStart ? 'week-separator' : ''"
                 :min-width="36"
                 align="center"
               >
@@ -194,19 +225,22 @@
 import { ref, computed, watch } from 'vue'
 import { Refresh, Download, User, Clock } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
-import { api, type ScheduleItem } from '../utils/api'
+import { api, type ScheduleItem, type Person } from '../utils/api'
 import { ElMessage } from 'element-plus'
 import * as XLSX from 'xlsx'
 
 const selectedMonth = ref(dayjs().format('YYYY-MM'))
 const selectedYear = ref(dayjs().format('YYYY'))
 const viewMode = ref<'month' | 'year'>('month')
+const baseWeekType = ref<'大周' | '小周'>('大周')
+const crossMonthContinuous = ref(true)
 const todayDate = dayjs().format('YYYY-MM-DD')
 const loading = ref(false)
 
 // 后端返回的原始排班数据
 const scheduleData = ref<ScheduleItem[]>([])
 const scheduleYearData = ref<Record<string, ScheduleItem[]>>({})
+const personInfoMap = ref(new Map<number, Person>())
 const hasResults = computed(() => {
   if (viewMode.value === 'month') {
     return scheduleData.value.length > 0
@@ -217,7 +251,7 @@ const hasResults = computed(() => {
 const buildMonthDays = (yearMonth: string) => {
   const start = dayjs(yearMonth + '-01')
   const end = start.endOf('month')
-  const days: { date: string; label: string; labelShort: string; labelDate: string; labelWeek: string }[] = []
+  const days: { date: string; label: string; labelShort: string; labelDate: string; labelWeek: string; isWeekStart: boolean }[] = []
   let current = start
   const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
 
@@ -232,7 +266,8 @@ const buildMonthDays = (yearMonth: string) => {
       label: `${month}月${day}日 ${weekDay}`,
       labelShort: `${month}/${day}\n${weekDay}`,
       labelDate: `${month}/${day}`,
-      labelWeek: weekDay
+      labelWeek: weekDay,
+      isWeekStart: current.day() === 1
     })
     current = current.add(1, 'day')
   }
@@ -253,6 +288,9 @@ const buildScheduleTable = (items: ScheduleItem[], days: { date: string }[]) => 
   const personMap = new Map<string, any>()
   const groupOrder: string[] = []
   const groupPersons = new Map<string, Set<string>>()
+  const personGroupMap = new Map<string, string>()
+  const personRotationMap = new Map<string, string>()
+  const personIdMap = new Map<string, number>()
 
   items.forEach(item => {
     const groupName = item.group || '未分组'
@@ -261,15 +299,31 @@ const buildScheduleTable = (items: ScheduleItem[], days: { date: string }[]) => 
       groupOrder.push(groupName)
     }
     groupPersons.get(groupName)!.add(item.person_name)
+    if (item.rotation_group) {
+      personRotationMap.set(item.person_name, item.rotation_group)
+    }
+    if (item.shift) {
+      personGroupMap.set(item.person_name, item.shift)
+    }
+    personIdMap.set(`${groupName}__${item.person_name}`, item.person_id)
   })
 
   groupOrder.forEach(groupName => {
     const names = Array.from(groupPersons.get(groupName) || [])
-    names.sort((a, b) => a.localeCompare(b, 'zh-Hans-CN'))
+    names.sort((a, b) => {
+      const groupA = personRotationMap.get(a) || personGroupMap.get(a) || ''
+      const groupB = personRotationMap.get(b) || personGroupMap.get(b) || ''
+      if (groupA !== groupB) {
+        return groupA.localeCompare(groupB, 'zh-Hans-CN')
+      }
+      return a.localeCompare(b, 'zh-Hans-CN')
+    })
     names.forEach(personName => {
       const row: Record<string, any> = {
         group: groupName,
-        personName
+        personName,
+        personId: personIdMap.get(`${groupName}__${personName}`) || null,
+        rotationGroup: personRotationMap.get(personName) || ''
       }
       days.forEach(day => {
         row[day.date] = null
@@ -311,7 +365,7 @@ const yearTables = computed(() => {
 
 const getPastelColor = (index: number) => {
   const hue = (index * 137.508) % 360
-  return `hsl(${hue}, 70%, 92%)`
+  return `hsl(${hue}, 80%, 86%)`
 }
 
 const shiftColorMap = computed(() => {
@@ -386,6 +440,47 @@ const spanMethod = ({ rowIndex, columnIndex }: { rowIndex: number; columnIndex: 
   return { rowspan: span, colspan: 1 }
 }
 
+const cellClassName = ({ columnIndex }: { columnIndex: number }) => {
+  if (columnIndex < 2) {
+    return ''
+  }
+  const day = monthDays.value[columnIndex - 2]
+  if (day?.isWeekStart) {
+    return 'week-separator'
+  }
+  return ''
+}
+
+const headerCellClassName = ({ columnIndex }: { columnIndex: number }) => {
+  if (columnIndex < 2) {
+    return ''
+  }
+  const day = monthDays.value[columnIndex - 2]
+  if (day?.isWeekStart) {
+    return 'week-separator'
+  }
+  return ''
+}
+
+const rowClassName = ({ rowIndex }: { rowIndex: number }) => {
+  const rows = scheduleTable.value
+  if (rowIndex <= 0 || rowIndex >= rows.length) {
+    return ''
+  }
+  const current = rows[rowIndex]
+  const previous = rows[rowIndex - 1]
+  if (!current || !previous) {
+    return ''
+  }
+  if (current.group !== previous.group) {
+    return 'group-separator'
+  }
+  if ((current.rotationGroup || '') !== (previous.rotationGroup || '')) {
+    return 'rotation-separator'
+  }
+  return ''
+}
+
 const spanMethodYear = (month: string) => {
   return ({ rowIndex, columnIndex }: { rowIndex: number; columnIndex: number }) => {
     if (columnIndex !== 0) {
@@ -422,6 +517,55 @@ const spanMethodYear = (month: string) => {
   }
 }
 
+const rowClassNameYear = (month: string) => {
+  return ({ rowIndex }: { rowIndex: number }) => {
+    const rows = yearTables.value[month]?.table || []
+    if (rowIndex <= 0 || rowIndex >= rows.length) {
+      return ''
+    }
+    const current = rows[rowIndex]
+    const previous = rows[rowIndex - 1]
+    if (!current || !previous) {
+      return ''
+    }
+    if (current.group !== previous.group) {
+      return 'group-separator'
+    }
+    if ((current.rotationGroup || '') !== (previous.rotationGroup || '')) {
+      return 'rotation-separator'
+    }
+    return ''
+  }
+}
+
+const cellClassNameYear = (month: string) => {
+  return ({ columnIndex }: { columnIndex: number }) => {
+    if (columnIndex < 2) {
+      return ''
+    }
+    const days = yearTables.value[month]?.days || []
+    const day = days[columnIndex - 2]
+    if (day?.isWeekStart) {
+      return 'week-separator'
+    }
+    return ''
+  }
+}
+
+const headerCellClassNameYear = (month: string) => {
+  return ({ columnIndex }: { columnIndex: number }) => {
+    if (columnIndex < 2) {
+      return ''
+    }
+    const days = yearTables.value[month]?.days || []
+    const day = days[columnIndex - 2]
+    if (day?.isWeekStart) {
+      return 'week-separator'
+    }
+    return ''
+  }
+}
+
 const totalPersons = computed(() => {
   if (viewMode.value === 'month') {
     return scheduleTable.value.length
@@ -454,10 +598,16 @@ const handleGenerateYear = async () => {
   }
   try {
     loading.value = true
+    const result = await api.generateYearSchedule(
+      selectedYear.value,
+      baseWeekType.value,
+      crossMonthContinuous.value
+    )
     const resultMap: Record<string, ScheduleItem[]> = {}
-    for (const month of yearMonths.value) {
-      const result = await api.generateSchedule(month)
-      resultMap[month] = result?.schedule || []
+    if (result?.schedules) {
+      Object.entries(result.schedules).forEach(([month, payload]) => {
+        resultMap[month] = payload?.schedule || []
+      })
     }
     scheduleYearData.value = resultMap
     ElMessage.success('全年排班生成成功')
@@ -477,7 +627,11 @@ const handleGenerate = async () => {
 
   try {
     loading.value = true
-    const result = await api.generateSchedule(selectedMonth.value)
+    const result = await api.generateSchedule(
+      selectedMonth.value,
+      baseWeekType.value,
+      crossMonthContinuous.value
+    )
     if (result) {
       scheduleData.value = result.schedule
       ElMessage.success('排班生成成功')
@@ -490,7 +644,7 @@ const handleGenerate = async () => {
   }
 }
 
-const handleExport = () => {
+const handleExport = async () => {
   if (viewMode.value === 'year') {
     ElMessage.warning('年度视图暂不支持导出')
     return
@@ -500,24 +654,69 @@ const handleExport = () => {
     return
   }
 
-  const exportData: any[] = []
-  const weekdayTexts = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
-  scheduleData.value.forEach(item => {
-    const dateObj = dayjs(item.date)
-    const month = dateObj.month() + 1
-    const day = dateObj.date()
-    const weekDay = weekdayTexts[dateObj.day()]
-    exportData.push({
-      date: `${month}月${day}日`,
-      weekday: weekDay,
-      name: item.person_name,
-      group: item.group,
-      shift: item.shift || '',
-      status: item.status,
+  if (personInfoMap.value.size === 0) {
+    try {
+      const persons = await api.getPersons()
+      const map = new Map<number, Person>()
+      persons.forEach(person => {
+        map.set(person.id, person)
+      })
+      personInfoMap.value = map
+    } catch (error) {
+      console.warn('加载人员信息失败，导出UID可能为空', error)
+    }
+  }
+
+  let shiftInfoText = '班次信息: 休息'
+  try {
+    const shiftDefs = await api.getShiftDefinitions()
+    if (shiftDefs.length > 0) {
+      const parts = shiftDefs.map(def => `${def.name}: ${def.startTime}-${def.endTime}`)
+      shiftInfoText = `班次信息: ${parts.join(', ')}, 休息`
+    }
+  } catch (error) {
+    console.warn('加载班次信息失败，将使用默认提示', error)
+  }
+
+  const groupNames = Array.from(new Set(scheduleTable.value.map(row => row.group))).filter(Boolean)
+  const title = groupNames.length === 1 ? `${groupNames[0]}排班表` : '排班表'
+  const noteText = '注意: UID为用户唯一标识，请与员工表保持一致，排班数据中UID不能重复'
+
+  const headerRow = ['UID', '部门', '工号', '姓名', ...monthDays.value.map(day => `${dayjs(day.date).format('YYYY/M/D')}\n${day.labelWeek}`)]
+  const dataRows = scheduleTable.value.map(row => {
+    const personInfo = row.personId ? personInfoMap.value.get(row.personId) : undefined
+    const rowData: (string | number)[] = [
+      personInfo?.uid || '',
+      row.group || '',
+      '',
+      row.personName
+    ]
+    monthDays.value.forEach(day => {
+      const cell = row[day.date]
+      let value = ''
+      if (cell) {
+        value = cell.status === '上班' ? (cell.shift || '') : cell.status
+      }
+      rowData.push(value)
     })
+    return rowData
   })
 
-  const ws = XLSX.utils.json_to_sheet(exportData)
+  const aoa = [
+    [title],
+    [noteText],
+    [shiftInfoText],
+    headerRow,
+    ...dataRows
+  ]
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa)
+  const totalCols = headerRow.length
+  ws['!merges'] = [
+    { s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } },
+    { s: { r: 1, c: 0 }, e: { r: 1, c: totalCols - 1 } },
+    { s: { r: 2, c: 0 }, e: { r: 2, c: totalCols - 1 } }
+  ]
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, 'schedule')
 
@@ -544,6 +743,22 @@ watch(viewMode, (newVal) => {
   if (newVal === 'year') {
     handleGenerateYear()
   } else if (newVal === 'month') {
+    handleGenerate()
+  }
+})
+
+watch(baseWeekType, () => {
+  if (viewMode.value === 'year') {
+    handleGenerateYear()
+  } else {
+    handleGenerate()
+  }
+})
+
+watch(crossMonthContinuous, () => {
+  if (viewMode.value === 'year') {
+    handleGenerateYear()
+  } else {
     handleGenerate()
   }
 })
@@ -589,6 +804,23 @@ watch(viewMode, (newVal) => {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.week-type-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cross-month-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.week-type-label {
+  font-size: 12px;
+  color: #606266;
 }
 
 .view-mode :deep(.el-radio-button__inner) {
@@ -719,6 +951,21 @@ watch(viewMode, (newVal) => {
   color: #a06200;
 }
 
+:deep(.week-separator) {
+  position: relative;
+}
+
+:deep(.week-separator)::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  left: -1px;
+  width: 3px;
+  background-color: #7b8188;
+  z-index: 2;
+}
+
 .shift-info {
   display: flex;
   flex-direction: column;
@@ -742,6 +989,28 @@ watch(viewMode, (newVal) => {
 
 .shift-day-cell {
   background-color: #ffffff;
+}
+
+:deep(.el-table__body tr.group-separator td) {
+  border-top: 1px solid #606266 !important;
+  box-shadow: inset 0 5px 0 #606266;
+}
+
+:deep(.el-table__fixed-body-wrapper tr.group-separator td),
+:deep(.el-table__fixed-right-body-wrapper tr.group-separator td) {
+  border-top: 5px solid #606266 !important;
+  box-shadow: inset 0 5px 0 #606266;
+}
+
+:deep(.el-table__body tr.rotation-separator td) {
+  border-top: 1px solid #c0c4cc !important;
+  box-shadow: inset 0 2px 0 #c0c4cc;
+}
+
+:deep(.el-table__fixed-body-wrapper tr.rotation-separator td),
+:deep(.el-table__fixed-right-body-wrapper tr.rotation-separator td) {
+  border-top: 2px solid #c0c4cc !important;
+  box-shadow: inset 0 2px 0 #c0c4cc;
 }
 
 .year-grid {
@@ -776,6 +1045,16 @@ watch(viewMode, (newVal) => {
 
 .year-table :deep(.el-table th) {
   height: 48px;
+}
+
+.year-table .schedule-cell {
+  min-height: 34px;
+  height: 34px;
+}
+
+.year-table .shift-text,
+.year-table .status-info {
+  font-size: 10px;
 }
 
 /* 响应式设计 */
