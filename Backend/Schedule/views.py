@@ -7,13 +7,14 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework import status
-from .models import ShiftDefinition, GroupConfig, Person, Absence, CalendarOverride
+from .models import ShiftDefinition, GroupConfig, Person, Absence, CalendarOverride, ShiftRotationGroup
 from .serializers import (
     ShiftDefinitionSerializer,
     GroupConfigSerializer,
     PersonSerializer,
     AbsenceSerializer,
     CalendarOverrideSerializer,
+    ShiftRotationGroupSerializer,
 )
 from .schedule_generator import generate_schedule
 import json
@@ -141,6 +142,50 @@ def group_config_detail(request, pk):
 
     if request.method == 'DELETE':
         group_config.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(['GET', 'POST'])
+def shift_rotation_groups_list(request):
+    """
+    获取或创建班次轮换组合
+    """
+    if request.method == 'GET':
+        groups = ShiftRotationGroup.objects.select_related('odd_shift', 'even_shift').all()
+        serializer = ShiftRotationGroupSerializer(groups, many=True)
+        return Response(serializer.data)
+
+    elif request.method == 'POST':
+        serializer = ShiftRotationGroupSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET', 'PUT', 'DELETE'])
+def shift_rotation_group_detail(request, pk):
+    """
+    获取、更新或删除特定班次轮换组合
+    """
+    try:
+        rotation_group = ShiftRotationGroup.objects.get(pk=pk)
+    except ShiftRotationGroup.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'GET':
+        serializer = ShiftRotationGroupSerializer(rotation_group)
+        return Response(serializer.data)
+
+    elif request.method == 'PUT':
+        serializer = ShiftRotationGroupSerializer(rotation_group, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    elif request.method == 'DELETE':
+        rotation_group.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

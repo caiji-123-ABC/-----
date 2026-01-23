@@ -27,7 +27,7 @@ def generate_schedule(year_month: str):
 
     schedule_data = []
 
-    persons = Person.objects.select_related('shift_type').all()
+    persons = Person.objects.select_related('shift_type', 'rotation_group', 'rotation_group__odd_shift', 'rotation_group__even_shift').all()
 
     # 大小周默认从大周开始
     first_week_type = '大周'
@@ -63,22 +63,17 @@ def generate_schedule(year_month: str):
             }
         }
 
-    # 按组分配 A/B 班
-    group_persons = {}
-    for person in persons:
-        group_persons.setdefault(person.group, []).append(person)
-
+    # 预计算人员轮换班次
+    person_shift_defs = {}
     person_shifts = {}
-    for group, group_member_list in group_persons.items():
-        group_member_list.sort(key=lambda p: p.id)
-        is_odd_month = month % 2 == 1
-        half_count = len(group_member_list) // 2
-
-        for idx, person in enumerate(group_member_list):
-            if is_odd_month:
-                person_shifts[person.id] = 'A' if idx < half_count else 'B'
-            else:
-                person_shifts[person.id] = 'B' if idx < half_count else 'A'
+    for person in persons:
+        if person.rotation_group:
+            shift_def = person.rotation_group.odd_shift if month % 2 == 1 else person.rotation_group.even_shift
+            person_shift_defs[person.id] = shift_def
+        elif person.shift_type:
+            person_shift_defs[person.id] = person.shift_type
+        else:
+            person_shifts[person.id] = ''
 
     # 计算参考周
     first_day_of_month = start_date.replace(day=1)
@@ -103,19 +98,17 @@ def generate_schedule(year_month: str):
         ).order_by('-priority', '-id')
 
         for person in persons:
-            if person.shift_type and person.shift_type.name:
-                shift_label = person.shift_type.name
-            else:
-                shift_label = person_shifts.get(person.id, '')
+            shift_def = person_shift_defs.get(person.id)
+            shift_label = shift_def.name if shift_def else person_shifts.get(person.id, '')
 
             shift = shift_label
             status = '上班'
             is_violation = False
             violation_reason = ''
 
-            person_shift_type_id = person.shift_type.id if person.shift_type else 'default'
-            if person_shift_type_id in week_configs:
-                work_days_for_this_person = week_configs[person_shift_type_id]['大周'] if is_big_week else week_configs[person_shift_type_id]['小周']
+            shift_type_id = shift_def.id if shift_def else 'default'
+            if shift_type_id in week_configs:
+                work_days_for_this_person = week_configs[shift_type_id]['大周'] if is_big_week else week_configs[shift_type_id]['小周']
             else:
                 work_days_for_this_person = week_configs['default']['大周'] if is_big_week else week_configs['default']['小周']
 

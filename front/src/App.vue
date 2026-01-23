@@ -28,6 +28,10 @@
             <el-icon><Clock /></el-icon>
             <span>班次定义</span>
           </el-menu-item>
+          <el-menu-item index="shift-rotation-groups">
+            <el-icon><Refresh /></el-icon>
+            <span>班次组合</span>
+          </el-menu-item>
           <el-menu-item index="groups">
             <el-icon><OfficeBuilding /></el-icon>
             <span>组配置</span>
@@ -53,7 +57,7 @@
   </el-container>
 </template>
 
-<script setup lang="ts">
+<script setup lang="ts"> 
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import {
@@ -62,7 +66,8 @@ import {
   OfficeBuilding,
   User,
   DocumentRemove,
-  Grid
+  Grid,
+  Refresh
 } from '@element-plus/icons-vue'
 const router = useRouter()
 const route = useRoute()

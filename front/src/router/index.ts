@@ -5,6 +5,7 @@ import Persons from '../views/Persons.vue'
 import Absences from '../views/Absences.vue'
 import CalendarOverrides from '../views/CalendarOverrides.vue'
 import Schedule from '../views/Schedule.vue'
+import ShiftRotationGroups from '../views/ShiftRotationGroups.vue'
 
 const routes = [
   { path: '/', redirect: '/schedule' },
@@ -13,6 +14,7 @@ const routes = [
   { path: '/persons', component: Persons },
   { path: '/absences', component: Absences },
   { path: '/calendar', component: CalendarOverrides },
+  { path: '/shift-rotation-groups', component: ShiftRotationGroups },
   { path: '/schedule', component: Schedule },
 ]
 

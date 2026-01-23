@@ -28,6 +28,8 @@ export interface Person {
   name: string;
   group: string;
   shiftType?: ShiftDefinition;
+  rotationGroup?: number;
+  rotationGroupName?: string;
   remark?: string;
 }
 
@@ -50,6 +52,16 @@ export interface CalendarOverride {
   target?: string;
   reason?: string;
   priority?: number;
+}
+
+export interface ShiftRotationGroup {
+  id: number;
+  name: string;
+  odd_shift: number;
+  even_shift: number;
+  oddShiftName?: string;
+  evenShiftName?: string;
+  remark?: string;
 }
 
 export interface GlobalRules {
@@ -143,6 +155,18 @@ function normalizeAbsence(def: any): Absence {
     reason: def.reason,
     countAsRest: def.count_as_rest ?? def.countAsRest,
     type: def.type,
+  };
+}
+
+function normalizePerson(def: any): Person {
+  return {
+    id: def.id,
+    name: def.name,
+    group: def.group,
+    shiftType: def.shiftType ?? def.shift_type,
+    rotationGroup: def.rotation_group ?? def.rotationGroup,
+    rotationGroupName: def.rotationGroupName ?? def.rotation_group_name,
+    remark: def.remark,
   };
 }
 
@@ -260,13 +284,15 @@ export const api = {
   // Person management
   getPersons: async (): Promise<Person[]> => {
     const response = await fetch(`${API_BASE_URL}/persons/`);
-    return (await handleResponse(response)) ?? [];
+    const result = await handleResponse<any[]>(response);
+    return (result || []).map(normalizePerson);
   },
 
   async createPerson(person: Omit<Person, 'id'>): Promise<Person> {
     const personData = {
       ...person,
       shift_type: typeof person.shiftType === 'object' ? person.shiftType.id : person.shiftType,
+      rotation_group: person.rotationGroup ?? null,
     };
 
     const response = await fetch(`${API_BASE_URL}/persons/`, {
@@ -284,6 +310,7 @@ export const api = {
     const personData = {
       ...person,
       shift_type: typeof person.shiftType === 'object' ? person.shiftType?.id : person.shiftType,
+      rotation_group: person.rotationGroup ?? null,
     };
 
     const response = await fetch(`${API_BASE_URL}/persons/${id}/`, {
@@ -299,6 +326,41 @@ export const api = {
 
   deletePerson: async (id: number): Promise<void> => {
     const response = await fetch(`${API_BASE_URL}/persons/${id}/`, {
+      method: 'DELETE',
+    });
+    await handleResponse(response);
+  },
+
+  // Shift rotation groups
+  getShiftRotationGroups: async (): Promise<ShiftRotationGroup[]> => {
+    const response = await fetch(`${API_BASE_URL}/shift-rotation-groups/`);
+    return (await handleResponse(response)) ?? [];
+  },
+
+  createShiftRotationGroup: async (group: Omit<ShiftRotationGroup, 'id'>): Promise<ShiftRotationGroup | null> => {
+    const response = await fetch(`${API_BASE_URL}/shift-rotation-groups/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(group),
+    });
+    return handleResponse(response);
+  },
+
+  updateShiftRotationGroup: async (id: number, group: ShiftRotationGroup): Promise<ShiftRotationGroup | null> => {
+    const response = await fetch(`${API_BASE_URL}/shift-rotation-groups/${id}/`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(group),
+    });
+    return handleResponse(response);
+  },
+
+  deleteShiftRotationGroup: async (id: number): Promise<void> => {
+    const response = await fetch(`${API_BASE_URL}/shift-rotation-groups/${id}/`, {
       method: 'DELETE',
     });
     await handleResponse(response);

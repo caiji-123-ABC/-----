@@ -8,6 +8,9 @@ urlpatterns = [
     path('group-configs/', views.group_configs_list, name='group-configs-list'),
     path('group-configs/<int:pk>/', views.group_config_detail, name='group-config-detail'),
 
+    path('shift-rotation-groups/', views.shift_rotation_groups_list, name='shift-rotation-groups-list'),
+    path('shift-rotation-groups/<int:pk>/', views.shift_rotation_group_detail, name='shift-rotation-group-detail'),
+
     path('persons/', views.persons_list, name='persons-list'),
     path('persons/<int:pk>/', views.person_detail, name='person-detail'),
 

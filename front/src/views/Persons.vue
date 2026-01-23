@@ -28,6 +28,11 @@
             <span>{{ getShiftTypeName(row.shiftType) || '未知' }}</span>
           </template>
         </el-table-column>
+        <el-table-column label="轮换组合">
+          <template #default="{ row }">
+            <span>{{ getRotationGroupName(row.rotationGroup) || row.rotationGroupName || '无' }}</span>
+          </template>
+        </el-table-column>
         <el-table-column label="操作">
           <template #default="{ row, $index }">
             <el-button link type="primary" @click="handleEdit(row, $index)">编辑</el-button>
@@ -62,6 +67,16 @@
             />
           </el-select>
         </el-form-item>
+        <el-form-item label="轮换组合">
+          <el-select v-model="form.rotationGroup" placeholder="可选" clearable filterable>
+            <el-option
+              v-for="group in rotationGroups"
+              :key="group.id"
+              :label="group.name"
+              :value="group.id"
+            />
+          </el-select>
+        </el-form-item>
       </el-form>
       <template #footer>
         <div class="dialog-footer">
@@ -77,7 +92,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { Plus } from '@element-plus/icons-vue'
 import { api } from '../utils/api'
-import type { ShiftDefinition, Person, GroupConfig } from '../utils/api'
+import type { ShiftDefinition, Person, GroupConfig, ShiftRotationGroup } from '../utils/api'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const dialogVisible = ref(false)
@@ -87,11 +102,18 @@ const loading = ref(false)
 const persons = ref<Person[]>([])
 const groups = ref<GroupConfig[]>([])
 const shifts = ref<ShiftDefinition[]>([])
+const rotationGroups = ref<ShiftRotationGroup[]>([])
 
-const form = ref<{ name: string; group: string; shiftType: number | null }>({
+const form = ref<{
+  name: string;
+  group: string;
+  shiftType: number | null;
+  rotationGroup: number | null;
+}>({
   name: '',
   group: '',
-  shiftType: null
+  shiftType: null,
+  rotationGroup: null
 })
 
 const availableGroups = computed(() => groups.value)
@@ -104,6 +126,7 @@ onMounted(async () => {
   await loadPersons()
   await loadGroups()
   await loadShifts()
+  await loadRotationGroups()
 })
 
 const loadPersons = async () => {
@@ -145,6 +168,16 @@ const loadShifts = async () => {
   }
 }
 
+const loadRotationGroups = async () => {
+  try {
+    const data = await api.getShiftRotationGroups()
+    rotationGroups.value = data
+  } catch (error) {
+    console.error('加载轮换组合失败:', error)
+    ElMessage.error('加载轮换组合失败')
+  }
+}
+
 const getShiftTypeName = (shiftType: any) => {
   if (!shiftType) return null
   if (typeof shiftType === 'number') {
@@ -160,12 +193,19 @@ const getShiftTypeName = (shiftType: any) => {
   return null
 }
 
+const getRotationGroupName = (rotationGroupId?: number | null) => {
+  if (!rotationGroupId) return null
+  const group = rotationGroups.value.find(item => item.id === rotationGroupId)
+  return group ? group.name : null
+}
+
 const handleAdd = () => {
   editingIndex.value = null
   form.value = {
     name: '',
     group: '',
-    shiftType: null
+    shiftType: null,
+    rotationGroup: null
   }
   dialogVisible.value = true
 }
@@ -184,7 +224,8 @@ const handleEdit = (row: Person, index: number) => {
   form.value = { 
     name: row.name,
     group: row.group,
-    shiftType: shiftTypeId
+    shiftType: shiftTypeId,
+    rotationGroup: row.rotationGroup ?? null
   }
   dialogVisible.value = true
 }
@@ -243,7 +284,8 @@ const handleSubmit = async () => {
         id: person.id,
         name: form.value.name!,
         group: form.value.group!,
-        shiftType: form.value.shiftType ? shifts.value.find(shift => shift.id === Number(form.value.shiftType)) : undefined
+        shiftType: form.value.shiftType ? shifts.value.find(shift => shift.id === Number(form.value.shiftType)) : undefined,
+        rotationGroup: form.value.rotationGroup ?? null
       }
 
       const updatedPerson = await api.updatePerson(Number(person.id), updateData)
@@ -255,7 +297,8 @@ const handleSubmit = async () => {
       const createData: Omit<Person, 'id'> = {
         name: form.value.name!,
         group: form.value.group!,
-        shiftType: form.value.shiftType ? shifts.value.find(shift => shift.id === Number(form.value.shiftType)) : undefined
+        shiftType: form.value.shiftType ? shifts.value.find(shift => shift.id === Number(form.value.shiftType)) : undefined,
+        rotationGroup: form.value.rotationGroup ?? null
       }
 
       const newPerson = await api.createPerson(createData)

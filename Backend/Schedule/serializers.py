@@ -13,9 +13,18 @@ class GroupConfigSerializer(serializers.ModelSerializer):
         model = GroupConfig
         fields = '__all__'
 
+class ShiftRotationGroupSerializer(serializers.ModelSerializer):
+    oddShiftName = serializers.CharField(source='odd_shift.name', read_only=True)
+    evenShiftName = serializers.CharField(source='even_shift.name', read_only=True)
+
+    class Meta:
+        model = ShiftRotationGroup
+        fields = '__all__'
+
 
 class PersonSerializer(serializers.ModelSerializer):
     shiftType = serializers.CharField(source='shift_type.name', read_only=True)
+    rotationGroupName = serializers.CharField(source='rotation_group.name', read_only=True)
 
     class Meta:
         model = Person
@@ -32,4 +41,3 @@ class CalendarOverrideSerializer(serializers.ModelSerializer):
     class Meta:
         model = CalendarOverride
         fields = '__all__'
-

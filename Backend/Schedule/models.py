@@ -25,12 +25,35 @@ class GroupConfig(models.Model):
     class Meta:
         db_table = 'group_config'
 
+class ShiftRotationGroup(models.Model):
+    """班次轮换组合"""
+    name = models.CharField(max_length=100, unique=True)
+    odd_shift = models.ForeignKey(
+        ShiftDefinition,
+        on_delete=models.CASCADE,
+        related_name='rotation_group_odd',
+        verbose_name='奇数月班次'
+    )
+    even_shift = models.ForeignKey(
+        ShiftDefinition,
+        on_delete=models.CASCADE,
+        related_name='rotation_group_even',
+        verbose_name='偶数月班次'
+    )
+    remark = models.TextField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'shift_rotation_group'
+
+    def __str__(self):
+        return self.name
 
 class Person(models.Model):
     """人员信息"""
     name = models.CharField(max_length=50)
     group = models.CharField(max_length=50)
     shift_type = models.ForeignKey(ShiftDefinition, on_delete=models.SET_NULL, null=True, blank=True)
+    rotation_group = models.ForeignKey(ShiftRotationGroup, on_delete=models.SET_NULL, null=True, blank=True)
 
     class Meta:
         db_table = 'person'
