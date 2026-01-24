@@ -74,6 +74,7 @@
             <el-option label="全员" value="全员" />
             <el-option label="指定组" value="指定组" />
             <el-option label="指定人员" value="指定人员" />
+            <el-option label="指定轮换组合" value="指定轮换组合" />
           </el-select>
         </el-form-item>
         <el-form-item v-if="form.scope === '指定组'" label="目标组" required>
@@ -96,7 +97,17 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="原因" required>
+        <el-form-item v-if="form.scope === '指定轮换组合'" label="轮换组合" required>
+          <el-select v-model="form.target" filterable>
+            <el-option
+              v-for="group in availableRotationGroups"
+              :key="group.name"
+              :label="group.name"
+              :value="group.name"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="原因">
           <el-input v-model="form.reason" />
         </el-form-item>
       </el-form>
@@ -111,7 +122,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { Plus } from '@element-plus/icons-vue'
-import { api, type CalendarOverride, type Person } from '../utils/api'
+import { api, type CalendarOverride, type Person, type ShiftRotationGroup } from '../utils/api'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import dayjs from 'dayjs'
 
@@ -129,6 +140,7 @@ const loading = ref(false)
 const overrides = ref<CalendarOverride[]>([])
 const persons = ref<Person[]>([])
 const groups = ref<string[]>([])
+const rotationGroups = ref<ShiftRotationGroup[]>([])
 
 const form = ref<Partial<CalendarOverride>>({
   date: '',
@@ -142,6 +154,7 @@ const form = ref<Partial<CalendarOverride>>({
 
 const availableGroups = computed(() => groups.value)
 const availablePersons = computed(() => persons.value)
+const availableRotationGroups = computed(() => rotationGroups.value)
 
 const dialogTitle = computed(() => editingIndex.value !== null ? '编辑休假' : '新增休假')
 
@@ -149,6 +162,7 @@ onMounted(async () => {
   await loadCalendarOverrides()
   await loadPersons()
   await loadGroups()
+  await loadRotationGroups()
 })
 
 const loadCalendarOverrides = async () => {
@@ -186,6 +200,17 @@ const loadGroups = async () => {
     }
   } catch (error) {
     console.error('加载组配置失败:', error)
+  }
+}
+
+const loadRotationGroups = async () => {
+  try {
+    const data = await api.getShiftRotationGroups()
+    if (data) {
+      rotationGroups.value = data
+    }
+  } catch (error) {
+    console.error('加载轮换组合失败:', error)
   }
 }
 
@@ -246,7 +271,7 @@ const handleSubmit = async () => {
     ElMessage.warning('请填写完整信息')
     return
   }
-  if ((form.value.scope === '指定组' || form.value.scope === '指定人员') && !form.value.target) {
+  if ((form.value.scope === '指定组' || form.value.scope === '指定人员' || form.value.scope === '指定轮换组合') && !form.value.target) {
     ElMessage.warning('请选择目标')
     return
   }

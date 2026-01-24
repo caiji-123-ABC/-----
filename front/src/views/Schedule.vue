@@ -34,14 +34,14 @@
               style="margin-right: 12px; width: 120px;"
             />
             <div class="week-type-toggle">
-              <span class="week-type-label">周类型</span>
+              <span class="week-type-label">更换周类型</span>
               <el-radio-group v-model="baseWeekType" size="small">
                 <el-radio-button label="大周">大周</el-radio-button>
                 <el-radio-button label="小周">小周</el-radio-button>
               </el-radio-group>
             </div>
             <div class="cross-month-toggle">
-              <span class="week-type-label">跨月周类型</span>
+              <span class="week-type-label">跨月周</span>
               <el-switch
                 v-model="crossMonthContinuous"
                 active-text="连续"
@@ -185,7 +185,7 @@
                 :key="day.date"
                 :label="day.labelShort"
                 :class-name="day.isWeekStart ? 'week-separator' : ''"
-                :min-width="36"
+                :min-width="40"
                 align="center"
               >
                 <template #header>

@@ -176,6 +176,10 @@ def generate_schedule(year_month: str, base_week_type: str = '大周', cross_mon
                     apply = True
                 elif override.scope == '指定人员' and override.target == person.name:
                     apply = True
+                elif override.scope == '指定轮换组合' and override.target:
+                    rotation_name = person.rotation_group.name if person.rotation_group else ''
+                    if rotation_name and override.target == rotation_name:
+                        apply = True
 
                 if apply:
                     if override.override_type == '上班':

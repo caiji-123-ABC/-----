@@ -93,6 +93,7 @@ class CalendarOverride(models.Model):
         ('全员', '全员'),
         ('指定组', '指定组'),
         ('指定人员', '指定人员'),
+        ('指定轮换组合', '指定轮换组合'),
     ]
 
     date = models.DateField(verbose_name='开始日期')
